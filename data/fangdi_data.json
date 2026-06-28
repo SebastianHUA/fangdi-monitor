@@ -1,0 +1,30 @@
+[
+  {
+    "date": "2026-06-27",
+    "newHouse": {
+      "todaySaleCount": null,
+      "todaySaleArea": null,
+      "availableUnits": null,
+      "newOpenCount": null
+    },
+    "secondHand": {
+      "yesterdaySaleCount": null,
+      "yesterdaySaleArea": null,
+      "listingCount": null
+    }
+  },
+  {
+    "date": "2026-06-28",
+    "newHouse": {
+      "todaySaleCount": 841,
+      "todaySaleArea": 52031,
+      "availableUnits": 59610,
+      "newOpenCount": null
+    },
+    "secondHand": {
+      "yesterdaySaleCount": null,
+      "yesterdaySaleArea": null,
+      "listingCount": 299738
+    }
+  }
+]
