@@ -79,3 +79,4 @@ raw_data/
 
 # 测试用的真实数据（应该用mock数据）
 test_data/real/
+!data/subscription_data.json
