@@ -188,16 +188,12 @@
         let currentView = 'daily';
         let charts = {};
 
-        // 获取数据日期（T-1日）
+        // 获取数据日期（直接从最新数据中获取）
         function getDataDate() {
-            const now = new Date();
-            const hour = now.getHours();
-            // 如果当前时间 < 8:00，使用前一天的数据
-            const dataDate = new Date(now);
-            if (hour < 8) {
-                dataDate.setDate(dataDate.getDate() - 1);
+            if (allData && allData.length > 0) {
+                return allData[0].date;  // 最新数据的日期
             }
-            return dataDate.toISOString().split('T')[0];
+            return '未知';
         }
 
         // 加载数据
