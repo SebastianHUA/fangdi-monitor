@@ -5,10 +5,7 @@
       "todaySignUnits": 920,
       "todaySignArea": 58000,
       "availableUnits": 59800,
-      "availableArea": 750,
-      "cumSaleUnits": null,
-      "cumSaleArea": null,
-      "newOpenUnits": null
+      "availableArea": 750
     },
     "secondHand": {
       "yesterdaySaleCount": 680,
@@ -22,10 +19,7 @@
       "todaySignUnits": 841,
       "todaySignArea": 52031,
       "availableUnits": 59610,
-      "availableArea": null,
-      "cumSaleUnits": null,
-      "cumSaleArea": null,
-      "newOpenUnits": null
+      "availableArea": null
     },
     "secondHand": {
       "yesterdaySaleCount": 650,
