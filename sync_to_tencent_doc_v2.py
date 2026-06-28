@@ -21,7 +21,7 @@ def load_json_data(json_file):
 def prepare_daily_records(data):
     """
     准备每日成交数据记录（MCP格式）
-    一手房数据日期=今天，二手房数据日期=昨天
+    每个日期生成一条记录，包含一手房和二手房所有字段
     """
     records = []
     
@@ -32,52 +32,42 @@ def prepare_daily_records(data):
     
     date_obj = datetime.strptime(date_str, '%Y-%m-%d')
     
-    # 一手房数据：日期 = 今天
+    # 一手房数据
     new_house = data.get('newHouse', {})
-    if new_house and new_house.get('todaySignUnits', 0) > 0:
-        today = date_obj
-        
-        # 计算套均面积（㎡/套）
-        avg_area = 0
-        if new_house.get('todaySignUnits', 0) > 0:
-            avg_area = round(new_house.get('todaySignArea', 0) / new_house.get('todaySignUnits', 1), 2)
-        
-        record = {
-            "field_values": [
-                {"field": "日期", "text_value": {"items": [{"text": today.strftime('%Y-%m-%d'), "type": "text"}]}},
-                {"field": "一手房成交套数", "number_value": new_house.get('todaySignUnits', 0)},
-                {"field": "一手房成交面积（㎡）", "number_value": new_house.get('todaySignArea', 0)},
-                {"field": "一手房套均面积（㎡/套）", "number_value": avg_area},
-                {"field": "一手房可售套数", "number_value": new_house.get('availableUnits', 0) if new_house.get('availableUnits') else 0}
-            ]
-        }
-        
-        records.append(record)
-        print("准备一手房数据记录: " + today.strftime('%Y-%m-%d'))
-    
-    # 二手房数据：日期 = 同一天（与一手房数据同一天）
-    # 说明：23:55抓取一手房，07:00抓取二手房，都填入同一天（T日）
+    # 二手房数据
     second_hand = data.get('secondHand', {})
-    if second_hand and second_hand.get('yesterdaySaleCount', 0) > 0:
-        yesterday = date_obj  # 同一天，不是昨天
-        
-        # 计算套均面积（㎡/套）
-        avg_area = 0
-        if second_hand.get('yesterdaySaleCount', 0) > 0:
-            avg_area = round(second_hand.get('yesterdaySaleArea', 0) / second_hand.get('yesterdaySaleCount', 1), 2)
-        
-        record = {
-            "field_values": [
-                {"field": "日期", "text_value": {"items": [{"text": yesterday.strftime('%Y-%m-%d'), "type": "text"}]}},
-                {"field": "二手房成交套数", "number_value": second_hand.get('yesterdaySaleCount', 0)},
-                {"field": "二手房成交面积（㎡）", "number_value": second_hand.get('yesterdaySaleArea', 0)},
-                {"field": "二手房套均面积（㎡/套）", "number_value": avg_area},
-                {"field": "二手房挂牌套数", "number_value": second_hand.get('listingCount', 0) if second_hand.get('listingCount') else 0}
-            ]
-        }
-        
-        records.append(record)
-        print("准备二手房数据记录: " + yesterday.strftime('%Y-%m-%d'))
+    
+    # 计算一手房套均面积（㎡/套）
+    new_house_avg = 0
+    today_sign_units = new_house.get('todaySignUnits') or 0
+    today_sign_area = new_house.get('todaySignArea') or 0
+    if today_sign_units > 0:
+        new_house_avg = round(today_sign_area / today_sign_units, 2)
+    
+    # 计算二手房套均面积（㎡/套）
+    second_hand_avg = 0
+    yesterday_sale_count = second_hand.get('yesterdaySaleCount') or 0
+    yesterday_sale_area = second_hand.get('yesterdaySaleArea') or 0
+    if yesterday_sale_count > 0:
+        second_hand_avg = round(yesterday_sale_area / yesterday_sale_count, 2)
+    
+    # 生成一条合并记录（一手房+二手房）
+    record = {
+        "field_values": [
+            {"field": "日期", "text_value": {"items": [{"text": date_str, "type": "text"}]}},
+            {"field": "一手房成交套数", "number_value": new_house.get('todaySignUnits', 0) or 0},
+            {"field": "一手房成交面积（㎡）", "number_value": new_house.get('todaySignArea', 0) or 0},
+            {"field": "一手房套均面积（㎡/套）", "number_value": new_house_avg},
+            {"field": "一手房可售套数", "number_value": new_house.get('availableUnits', 0) or 0},
+            {"field": "二手房成交套数", "number_value": second_hand.get('yesterdaySaleCount', 0) or 0},
+            {"field": "二手房成交面积（㎡）", "number_value": second_hand.get('yesterdaySaleArea', 0) or 0},
+            {"field": "二手房套均面积（㎡/套）", "number_value": second_hand_avg},
+            {"field": "二手房挂牌套数", "number_value": second_hand.get('listingCount', 0) or 0}
+        ]
+    }
+    
+    records.append(record)
+    print("准备合并记录: " + date_str + " (一手房+" + "二手房)")
     
     return records
 
