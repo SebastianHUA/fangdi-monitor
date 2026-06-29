@@ -510,33 +510,6 @@
                 tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#e53935;">认购数据加载失败：' + e.message + '</td></tr>';
             }
         }
-                const tr = document.createElement('tr');
-                const startDate = new Date(p.startDate);
-                const today = new Date();
-                let status = '已结束';
-                let badge = 'badge-ended';
-                if (startDate > today) {
-                    status = '即将开始';
-                    badge = 'badge-new';
-                } else if (p.endDate && new Date(p.endDate) >= today) {
-                    status = '进行中';
-                    badge = 'badge-ongoing';
-                }
-                
-                tr.innerHTML = `
-                    <td>${p.region ?? '--'}</td>
-                    <td>${p.name ?? '--'}</td>
-                    <td>${p.developer ?? '--'}</td>
-                    <td>${p.startDate ?? '--'}</td>
-                    <td>${p.endDate ?? '--'}</td>
-                    <td>${p.units ?? '--'}</td>
-                    <td>${(p.area ?? 0).toLocaleString()}</td>
-                    <td>${(p.avgPrice ?? 0).toLocaleString()}</td>
-                    <td><span class="${badge}">${status}</span></td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
 
         // 切换视图
         function setView(view) {
