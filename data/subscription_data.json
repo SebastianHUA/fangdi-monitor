@@ -1,35 +1,102 @@
 [
   {
-    "district": "浦东",
-    "projectName": "示例项目1",
-    "developer": "示例开发商",
-    "startDate": "2026-06-25",
-    "endDate": "2026-07-01",
-    "units": 200,
-    "area": 25000,
-    "avgPrice": "50000元/㎡",
-    "status": "进行中"
+    "district": "浦东新区",
+    "projectName": "高臻璟庭",
+    "developer": "上海长江高行置业有限公司",
+    "startDate": "2026-06-20",
+    "endDate": "2026-06-24",
+    "units": 96,
+    "area": 12492,
+    "avgPrice": "70500元/㎡"
   },
   {
-    "district": "闵行",
-    "projectName": "示例项目2",
-    "developer": "示例开发商2",
-    "startDate": "2026-06-28",
-    "endDate": "2026-07-04",
-    "units": 150,
-    "area": 18000,
-    "avgPrice": "55000元/㎡",
-    "status": "进行中"
+    "district": "松江区",
+    "projectName": "盛仓名都",
+    "developer": "上海松江建通房地产开发房地产有限公司",
+    "startDate": "2026-06-15",
+    "endDate": "2026-06-19",
+    "units": 104,
+    "area": 11608,
+    "avgPrice": "45086元/㎡"
   },
   {
-    "district": "徐汇",
-    "projectName": "示例项目3",
-    "developer": "示例开发商3",
-    "startDate": "2026-07-02",
-    "endDate": "2026-07-08",
-    "units": 100,
-    "area": 12000,
-    "avgPrice": "60000元/㎡",
-    "status": "即将开始"
+    "district": "宝山区",
+    "projectName": "美罗家园云湖玥璟庭",
+    "developer": "上海兆宝泓房地产开发有限公司",
+    "startDate": "2026-06-14",
+    "endDate": "2026-06-16",
+    "units": 78,
+    "area": 8506,
+    "avgPrice": "47629元/㎡"
+  },
+  {
+    "district": "徐汇区",
+    "projectName": "云锦华庭（一期）",
+    "developer": "上海申和臻悦房地产开发有限公司",
+    "startDate": "2026-06-13",
+    "endDate": "2026-06-15",
+    "units": 30,
+    "area": 9489,
+    "avgPrice": "206000元/㎡"
+  },
+  {
+    "district": "虹口区",
+    "projectName": "璞元名筑",
+    "developer": "上海沁茂佳置业有限公司",
+    "startDate": "2026-06-13",
+    "endDate": "2026-06-16",
+    "units": 58,
+    "area": 8692,
+    "avgPrice": "165000元/㎡"
+  },
+  {
+    "district": "浦东新区",
+    "projectName": "开云艾尚里",
+    "developer": "上海北蔡新城镇开发有限公司",
+    "startDate": "2026-06-13",
+    "endDate": "2026-06-17",
+    "units": 84,
+    "area": 9207,
+    "avgPrice": "83000元/㎡"
+  },
+  {
+    "district": "奉贤区",
+    "projectName": "湖滨玥庭",
+    "developer": "上海建瀚置业有限公司",
+    "startDate": "2026-06-13",
+    "endDate": "2026-06-17",
+    "units": 187,
+    "area": 25660,
+    "avgPrice": "37302元/㎡"
+  },
+  {
+    "district": "浦东新区",
+    "projectName": "智铁和光雅筑",
+    "developer": "上海浦发上城商业建设发展有限公司",
+    "startDate": "2026-06-13",
+    "endDate": "2026-06-17",
+    "units": 114,
+    "area": 12367,
+    "avgPrice": "60000元/㎡"
+  },
+  {
+    "district": "浦东新区",
+    "projectName": "润耀华庭",
+    "developer": "上海新霁周企业发展有限公司",
+    "startDate": "2026-06-12",
+    "endDate": "2026-06-16",
+    "units": 85,
+    "area": 19487,
+    "avgPrice": "147300元/㎡"
+  },
+  {
+    "district": "浦东新区",
+    "projectName": "臻瑭雅苑",
+    "developer": "上海招鼎置业有限公司",
+    "startDate": "2026-06-09",
+    "endDate": "2026-06-13",
+    "units": 37,
+    "area": 4868,
+    "avgPrice": "83457元/㎡"
   }
 ]
