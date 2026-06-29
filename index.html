@@ -430,36 +430,77 @@
         }
 
         // 更新认购公示
-        function updateSubscription() {
+        async function updateSubscription() {
             const tbody = document.getElementById('subscriptionBody');
-            tbody.innerHTML = '';
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;">加载中...</td></tr>';
             
-            // 从数据文件中读取认购公示
-            const subscriptions = allData[0]?.newHouse?.subscriptions ?? [];
-            
-            if (subscriptions.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;">暂无认购公示数据</td></tr>';
-                return;
+            try {
+                // 从单独的数据文件中读取认购公示
+                const response = await fetch('./data/subscription_data.json?t=' + Date.now());
+                if (!response.ok) throw new Error('认购数据加载失败');
+                const subscriptions = await response.json();
+                
+                tbody.innerHTML = '';
+                
+                if (!subscriptions || subscriptions.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;">暂无认购公示数据</td></tr>';
+                    return;
+                }
+                
+                // 过滤前后7天的认购楼盘
+                const today = new Date();
+                const sevenDaysAgo = new Date(today);
+                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                const sevenDaysLater = new Date(today);
+                sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+                
+                const filtered = subscriptions.filter(p => {
+                    const startDate = new Date(p.startDate);
+                    return startDate >= sevenDaysAgo && startDate <= sevenDaysLater;
+                });
+                
+                if (filtered.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;">前后7天无认购楼盘</td></tr>';
+                    return;
+                }
+                
+                filtered.forEach(p => {
+                    const tr = document.createElement('tr');
+                    
+                    // 判断状态
+                    const startDate = new Date(p.startDate);
+                    const endDate = new Date(p.endDate);
+                    let status = '';
+                    let statusClass = '';
+                    if (today < startDate) {
+                        status = '即将开始';
+                        statusClass = 'badge-new';
+                    } else if (today > endDate) {
+                        status = '已结束';
+                        statusClass = 'badge-ended';
+                    } else {
+                        status = '进行中';
+                        statusClass = 'badge-ongoing';
+                    }
+                    
+                    tr.innerHTML = `
+                        <td>${p.district || '-'}</td>
+                        <td>${p.projectName || '-'}</td>
+                        <td>${p.developer || '-'}</td>
+                        <td>${p.startDate || '-'}</td>
+                        <td>${p.endDate || '-'}</td>
+                        <td>${p.units ? p.units.toLocaleString() : '-'}</td>
+                        <td>${p.area ? p.area.toLocaleString() : '-'}</td>
+                        <td>${p.avgPrice || '-'}</td>
+                        <td><span class="${statusClass}">${status}</span></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#e53935;">认购数据加载失败：' + e.message + '</td></tr>';
             }
-            
-            // 过滤前后7天的认购楼盘
-            const today = new Date();
-            const sevenDaysAgo = new Date(today);
-            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-            const sevenDaysLater = new Date(today);
-            sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
-            
-            const filtered = subscriptions.filter(p => {
-                const startDate = new Date(p.startDate);
-                return startDate >= sevenDaysAgo && startDate <= sevenDaysLater;
-            });
-            
-            if (filtered.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;">前后7天无认购楼盘</td></tr>';
-                return;
-            }
-            
-            filtered.forEach(p => {
+        }
                 const tr = document.createElement('tr');
                 const startDate = new Date(p.startDate);
                 const today = new Date();
