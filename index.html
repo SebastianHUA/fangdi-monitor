@@ -243,17 +243,17 @@
             const nhUnits = latest.newHouse?.todaySignUnits ?? latest.newHouse?.todaySaleCount ?? 0;
             document.getElementById('newHouseCount').textContent = nhUnits.toLocaleString();
             
-            // 一手房面积
+            // 一手房面积（取整数）
             const nhArea = latest.newHouse?.todaySignArea ?? latest.newHouse?.todaySaleArea ?? 0;
-            document.getElementById('newHouseArea').textContent = nhArea.toLocaleString();
+            document.getElementById('newHouseArea').textContent = Math.round(nhArea).toLocaleString();
             
             // 二手房网签
             const shUnits = latest.secondHand?.yesterdaySaleCount ?? 0;
             document.getElementById('secondHandCount').textContent = shUnits.toLocaleString();
             
-            // 二手房面积（直接显示㎡，不转换）
+            // 二手房面积（取整数，直接显示㎡）
             const shArea = latest.secondHand?.yesterdaySaleArea ?? 0;
-            document.getElementById('secondHandArea').textContent = shArea.toLocaleString();
+            document.getElementById('secondHandArea').textContent = Math.round(shArea).toLocaleString();
             
             // 一手房可售
             const avail = latest.newHouse?.availableUnits ?? 0;
@@ -410,7 +410,7 @@
             }
         }
 
-        // 更新表格
+        // 更新表格（所有面积取整数）
         function updateTable() {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
@@ -419,9 +419,9 @@
             recent.forEach(d => {
                 const tr = document.createElement('tr');
                 const nhUnits = d.newHouse?.todaySignUnits ?? d.newHouse?.todaySaleCount ?? 0;
-                const nhArea = d.newHouse?.todaySignArea ?? d.newHouse?.todaySaleArea ?? 0;
+                const nhArea = Math.round(d.newHouse?.todaySignArea ?? d.newHouse?.todaySaleArea ?? 0);
                 const shUnits = d.secondHand?.yesterdaySaleCount ?? 0;
-                const shArea = d.secondHand?.yesterdaySaleArea ?? 0;
+                const shArea = Math.round(d.secondHand?.yesterdaySaleArea ?? 0);  // 直接显示㎡，取整数
                 const avail = d.newHouse?.availableUnits ?? 0;
                 const listing = d.secondHand?.listingCount ?? 0;
                 
@@ -431,7 +431,7 @@
                     <td>${nhArea.toLocaleString()}</td>
                     <td>${avail.toLocaleString()}</td>
                     <td>${shUnits.toLocaleString()}</td>
-                    <td>${(shArea / 10000).toFixed(2)}</td>
+                    <td>${shArea.toLocaleString()}</td>
                     <td>${listing.toLocaleString()}</td>
                 `;
                 tbody.appendChild(tr);
