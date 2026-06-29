@@ -91,14 +91,14 @@
                 <span class="value" id="newHouseCount">--</span><span class="unit">套</span>
                 <div class="change" id="newHouseChange"></div>
             </div>
-            <div class="stat-card newhouse">
-                <div class="label">🏗️ 一手房面积</div>
-                <span class="value" id="newHouseArea">--</span><span class="unit">㎡</span>
-            </div>
             <div class="stat-card secondhand">
                 <div class="label">🏘️ 二手房网签</div>
                 <span class="value" id="secondHandCount">--</span><span class="unit">套</span>
                 <div class="change" id="secondHandChange"></div>
+            </div>
+            <div class="stat-card newhouse">
+                <div class="label">🏗️ 一手房面积</div>
+                <span class="value" id="newHouseArea">--</span><span class="unit">㎡</span>
             </div>
             <div class="stat-card secondhand">
                 <div class="label">🏘️ 二手房面积</div>
@@ -458,22 +458,18 @@
                 
                 // 过滤前后7天的认购楼盘
                 const today = new Date();
-                const sevenDaysAgo = new Date(today);
-                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-                const sevenDaysLater = new Date(today);
-                sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
                 
-                const filtered = subscriptions.filter(p => {
-                    const startDate = new Date(p.startDate);
-                    return startDate >= sevenDaysAgo && startDate <= sevenDaysLater;
+                // 显示所有认购数据，按开始日期倒序排列（最新的在前）
+                const sorted = subscriptions.sort((a, b) => {
+                    return new Date(b.startDate) - new Date(a.startDate);
                 });
                 
-                if (filtered.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;">前后7天无认购楼盘</td></tr>';
+                if (sorted.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;">暂无认购公示数据</td></tr>';
                     return;
                 }
                 
-                filtered.forEach(p => {
+                sorted.forEach(p => {
                     const tr = document.createElement('tr');
                     
                     // 判断状态
