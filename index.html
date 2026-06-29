@@ -199,11 +199,13 @@
         // 加载数据
         async function loadData() {
             try {
+                console.log('[看板] 开始加载数据...');
                 const response = await fetch('./data/fangdi_data.json?t=' + Date.now());
-                if (!response.ok) throw new Error('数据加载失败');
+                if (!response.ok) throw new Error('数据加载失败: ' + response.status);
                 allData = await response.json();
+                console.log('[看板] 数据加载成功:', allData);
                 
-                if (allData.length === 0) {
+                if (!allData || allData.length === 0) {
                     document.getElementById('updateInfo').textContent = '暂无数据';
                     return;
                 }
@@ -211,13 +213,20 @@
                 // 按日期降序排序
                 allData.sort((a, b) => b.date > a.date ? 1 : -1);
                 
-                updateDashboard();
-                updateCharts();
-                updateTable();
-                updateSubscription();
+                // 逐个更新，如果某个失败也不影响其他
+                try { updateDashboard(); } catch(e) { console.error('updateDashboard失败:', e); }
+                try { updateCharts(); } catch(e) { console.error('updateCharts失败:', e); }
+                try { updateTable(); } catch(e) { console.error('updateTable失败:', e); }
+                try { await updateSubscription(); } catch(e) { console.error('updateSubscription失败:', e); }
+                
+                console.log('[看板] 所有数据更新完成');
                 
             } catch (e) {
+                console.error('[看板] 加载失败:', e);
                 document.getElementById('updateInfo').textContent = '数据加载失败：' + e.message;
+                // 显示详细错误信息在页面上
+                document.getElementById('newHouseCount').textContent = '?';
+                document.getElementById('secondHandCount').textContent = '?';
             }
         }
 
