@@ -242,9 +242,9 @@
             const shUnits = latest.secondHand?.yesterdaySaleCount ?? 0;
             document.getElementById('secondHandCount').textContent = shUnits.toLocaleString();
             
-            // 二手房面积
+            // 二手房面积（直接显示㎡，不转换）
             const shArea = latest.secondHand?.yesterdaySaleArea ?? 0;
-            document.getElementById('secondHandArea').textContent = (shArea / 10000).toFixed(2);
+            document.getElementById('secondHandArea').textContent = shArea.toLocaleString();
             
             // 一手房可售
             const avail = latest.newHouse?.availableUnits ?? 0;
