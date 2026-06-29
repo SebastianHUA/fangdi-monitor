@@ -18,13 +18,13 @@
     "newHouse": {
       "todaySignUnits": 841,
       "todaySignArea": 52031,
-      "availableUnits": 59610,
-      "availableArea": null
+      "availableUnits": 59609,
+      "availableArea": 748.99
     },
     "secondHand": {
-      "yesterdaySaleCount": 650,
-      "yesterdaySaleArea": 48000,
-      "listingCount": 299738
+      "yesterdaySaleCount": 1170,
+      "yesterdaySaleArea": 92679.71,
+      "listingCount": 299139
     }
   }
 ]
