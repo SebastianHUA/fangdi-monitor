@@ -91,7 +91,7 @@ function generateReportMarkdown(data, date) {
         const saleArea = secondHand.yesterdaySaleArea || 0;
         const listingCount = secondHand.listingCount || 0;
         
-        lines.push(`✅ 当日网签：${saleCount}套 / ${saleArea}㎡`);
+        lines.push(`✅ 当日签约：${saleCount}套 / ${saleArea}㎡`);
         
         if (saleCount > 0 && saleArea > 0) {
             const avgArea = (saleArea / saleCount).toFixed(1);
