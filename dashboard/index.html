@@ -131,6 +131,25 @@
             <h3>📝 楼市回顾</h3>
             <p id="marketReviewText"></p>
         </div>
+
+        <div class="chart-container" id="subscriptionCard" style="display:none;">
+            <h2>🏗️ 近期认购楼盘公示</h2>
+            <table class="data-table" id="subscriptionTable">
+                <thead>
+                    <tr>
+                        <th>项目名称</th>
+                        <th>所在区</th>
+                        <th>认购开始</th>
+                        <th>认购结束</th>
+                        <th>套数</th>
+                        <th>备案均价(元/㎡)</th>
+                    </tr>
+                </thead>
+                <tbody id="subscriptionBody">
+                    <tr><td colspan="6" class="loading">加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
     
     <script>
@@ -388,6 +407,39 @@
             }
         }
         
+        // 加载认购楼盘数据
+        async function loadSubscriptionData() {
+            try {
+                const response = await fetch('data/subscription_data.json?t=' + Date.now());
+                if (!response.ok) return;
+                const data = await response.json();
+                
+                if (data.recentSubscriptions && data.recentSubscriptions.length > 0) {
+                    document.getElementById('subscriptionCard').style.display = 'block';
+                    
+                    const tbody = document.getElementById('subscriptionBody');
+                    tbody.innerHTML = '';
+                    
+                    data.recentSubscriptions.forEach(r => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${r.projectName}</td>
+                            <td>${r.district}</td>
+                            <td>${r.subscribeStart}</td>
+                            <td>${r.subscribeEnd}</td>
+                            <td>${r.units}</td>
+                            <td>${r.avgPrice.toLocaleString()}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                    
+                    console.log(`[认购] ✅ 显示 ${data.recentSubscriptions.length} 条认购楼盘`);
+                }
+            } catch (e) {
+                console.log('[认购] 加载失败:', e.message);
+            }
+        }
+        
         // 设置视图
         function setView(view) {
             currentView = view;
@@ -398,7 +450,9 @@
         
         // 初始化
         loadData();
+        loadSubscriptionData();
         setInterval(loadData, 300000); // 5分钟刷新一次
+        setInterval(loadSubscriptionData, 300000); // 5分钟刷新一次
     </script>
 </body>
 </html>
