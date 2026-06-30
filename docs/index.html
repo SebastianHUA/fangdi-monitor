@@ -150,6 +150,18 @@
                     raw = [raw];
                 }
                 allData = Array.isArray(raw) ? raw : [];
+                
+                // 过滤无效数据（date为空或newHouse/secondHand全为null）
+                allData = allData.filter(d => {
+                    if (!d.date) return false;
+                    if (!d.newHouse && !d.secondHand) return false;
+                    if (d.newHouse && d.newHouse.todaySignUnits === null && d.newHouse.todaySignArea === null &&
+                        d.secondHand && d.secondHand.yesterdaySaleCount === null && d.secondHand.yesterdaySaleArea === null) {
+                        return false;
+                    }
+                    return true;
+                });
+                
                 allData.sort((a, b) => a.date > b.date ? 1 : -1);
                 updateDashboard();
             } catch (e) {
