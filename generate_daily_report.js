@@ -45,17 +45,17 @@ function readJSONFile(filePath) {
     }
 }
 
-// 生成完整日报的Markdown内容
+// 生成完整日报的Markdown内容（优化版：适合微信阅读）
 function generateReportMarkdown(data, date) {
     const lines = [];
     
-    lines.push(`# 上海房地产市场日报_${date}`);
-    lines.push(``);
-    lines.push(`> 生成时间: ${new Date().toLocaleString('zh-CN', {timeZone: 'Asia/Shanghai'})}`);
+    // 标题
+    lines.push(`📊 上海房地产市场日报`);
+    lines.push(`📅 数据日期：${date}`);
     lines.push(``);
     
     // 一、一手房成交情况
-    lines.push(`## 📈 一、一手房成交情况`);
+    lines.push(`🏗️ 一手房成交情况`);
     lines.push(``);
     
     const newHouse = data.newHouse || {};
@@ -65,22 +65,15 @@ function generateReportMarkdown(data, date) {
         const signUnits = newHouse.todaySignUnits || homePage.todaySignUnits || 0;
         const signArea = newHouse.todaySignArea || homePage.todaySignArea || 0;
         const availableUnits = newHouse.availableUnits || homePage.newHouseAvailableUnits || 0;
-        const availableArea = newHouse.availableArea || homePage.newHouseAvailableArea || 0;
         
-        lines.push(`- **当日签约套数**: ${signUnits} 套`);
-        lines.push(`- **当日签约面积**: ${signArea} ㎡`);
+        lines.push(`✅ 当日签约：${signUnits}套 / ${signArea}㎡`);
         
         if (signUnits > 0 && signArea > 0) {
-            const avgArea = (signArea / signUnits).toFixed(2);
-            lines.push(`- **套均面积**: ${avgArea} ㎡/套`);
+            const avgArea = (signArea / signUnits).toFixed(1);
+            lines.push(`📐 套均面积：${avgArea}㎡/套`);
         }
         
-        lines.push(`- **可售住宅套数**: ${availableUnits} 套`);
-        lines.push(`- **可售住宅面积**: ${availableArea} 万㎡`);
-        
-        if (newHouse.newOpenUnits) {
-            lines.push(`- **新开房源**: ${newHouse.newOpenUnits} 套`);
-        }
+        lines.push(`🏢 可售住宅：${availableUnits.toLocaleString()}套`);
     } else {
         lines.push(`（无数据）`);
     }
@@ -88,48 +81,44 @@ function generateReportMarkdown(data, date) {
     lines.push(``);
     
     // 二、二手房成交情况
-    lines.push(`## 📉 二、二手房成交情况`);
+    lines.push(`🏘️ 二手房成交情况`);
     lines.push(``);
     
     const secondHand = data.secondHand || {};
     
     if (secondHand && secondHand.yesterdaySaleCount) {
-        lines.push(`- **昨日成交套数**: ${secondHand.yesterdaySaleCount} 套`);
-        lines.push(`- **昨日成交面积**: ${secondHand.yesterdaySaleArea} ㎡`);
+        const saleCount = secondHand.yesterdaySaleCount || 0;
+        const saleArea = secondHand.yesterdaySaleArea || 0;
+        const listingCount = secondHand.listingCount || 0;
         
-        if (secondHand.yesterdaySaleCount > 0 && secondHand.yesterdaySaleArea > 0) {
-            const avgArea = (secondHand.yesterdaySaleArea / secondHand.yesterdaySaleCount).toFixed(2);
-            lines.push(`- **套均面积**: ${avgArea} ㎡/套`);
+        lines.push(`✅ 当日成交：${saleCount}套 / ${saleArea}㎡`);
+        
+        if (saleCount > 0 && saleArea > 0) {
+            const avgArea = (saleArea / saleCount).toFixed(1);
+            lines.push(`📐 套均面积：${avgArea}㎡/套`);
         }
+        
+        lines.push(`📋 挂牌套数：${listingCount.toLocaleString()}套`);
     } else {
         lines.push(`（无数据）`);
     }
     
     lines.push(``);
     
-    // 三、市场供应情况
-    lines.push(`## 🏗️ 三、市场供应情况`);
-    lines.push(``);
-    
-    if (homePage && homePage.newHouseAvailableUnits) {
-        lines.push(`- **一手房可售套数**: ${homePage.newHouseAvailableUnits} 套`);
-        lines.push(`- **一手房可售面积**: ${homePage.newHouseAvailableArea} 万㎡`);
+    // 三、楼市回顾（新增）
+    if (data.marketReview) {
+        lines.push(`📰 楼市回顾`);
+        lines.push(``);
+        lines.push(data.marketReview);
+        lines.push(``);
     }
     
-    if (homePage && homePage.secondHandListingCount) {
-        lines.push(`- **二手房挂牌笔数**: ${homePage.secondHandListingCount} 笔`);
-        lines.push(`- **二手房挂牌面积**: ${homePage.secondHandListingArea} 万㎡`);
-    }
-    
+    // 四、数据链接
+    lines.push(`📈 数据看板：`);
+    lines.push(`https://sebastianhua.github.io/fangdi-monitor/`);
     lines.push(``);
-    
-    // 四、数据来源
-    lines.push(`## 📋 四、数据来源`);
-    lines.push(``);
-    lines.push(`- **数据来源**: 上海网上房地产（www.fangdi.com.cn）`);
-    lines.push(`- **一手房数据**: ${date} 23:55 抓取`);
-    lines.push(`- **二手房数据**: ${getDateString(new Date())} 07:00 抓取`);
-    lines.push(``);
+    lines.push(`📋 数据表格：`);
+    lines.push(`https://docs.qq.com/smartsheet/DTnNsSXVoc21TbkhF`);
     
     return lines.join('\n');
 }
@@ -178,15 +167,47 @@ function main() {
         console.log(`[日报生成] ⚠️ 未找到一手房数据文件，将只生成二手房报告`);
     }
     
-    // 3. 合并数据
+    // 3. 合并数据（优先使用当前数据文件中的一手房数据）
+    let newHouse = null;
+    
+    // 尝试从当前数据文件获取
+    if (secondHandData && secondHandData.newHouse && secondHandData.newHouse.todaySignUnits) {
+        newHouse = secondHandData.newHouse;
+    } else if (newHouseData && newHouseData.newHouse) {
+        newHouse = newHouseData.newHouse;
+    }
+    
+    // 如果一手房数据为0，尝试从 marketReview 提取
+    if ((!newHouse || !newHouse.todaySignUnits || newHouse.todaySignUnits === 0) && secondHandData && secondHandData.marketReview) {
+        const match = secondHandData.marketReview.match(/预\/出售各类商品房(\d+)套/);
+        const areaMatch = secondHandData.marketReview.match(/面积([\d.]+)万平方米/);
+        if (match) {
+            newHouse = {
+                todaySignUnits: parseInt(match[1]),
+                todaySignArea: areaMatch ? parseFloat(areaMatch[1]) * 10000 : 0,
+                availableUnits: newHouse ? newHouse.availableUnits : null,
+                availableArea: newHouse ? newHouse.availableArea : null
+            };
+            console.log(`[日报生成] ✅ 从 marketReview 补全一手房数据: ${newHouse.todaySignUnits}套`);
+        }
+    }
+    
     const mergedData = {
         date: yesterdayStr,
-        newHouse: newHouseData ? newHouseData.newHouse : null,
+        newHouse: newHouse,
         secondHand: secondHandData.secondHand || null,
-        homePage: secondHandData.homePage || (newHouseData ? newHouseData.homePage : null)
+        homePage: secondHandData.homePage || (newHouseData ? newHouseData.homePage : null),
+        marketReview: secondHandData.marketReview || null  // 新增：楼市回顾
     };
     
-    // 4. 如果一手房数据缺失，尝试从今天的数据文件中获取（homePage可能包含）
+    // 调试信息
+    if (secondHandData && secondHandData.newHouse && secondHandData.newHouse.todaySignUnits) {
+        console.log(`[日报生成] ✅ 使用当前数据文件中的一手房数据: ${secondHandData.newHouse.todaySignUnits}套`);
+    } else if (newHouseData && newHouseData.newHouse) {
+        console.log(`[日报生成] ✅ 使用昨天数据文件中的一手房数据: ${newHouseData.newHouse.todaySignUnits}套`);
+    } else {
+        console.log(`[日报生成] ⚠️ 未找到一手房数据`);
+    }
     if (!mergedData.newHouse && secondHandData.homePage) {
         mergedData.newHouse = {
             todaySignUnits: secondHandData.homePage.todaySignUnits,
