@@ -448,22 +448,24 @@
                 // 从单独的数据文件中读取认购公示
                 const response = await fetch('./data/subscription_data.json?t=' + Date.now());
                 if (!response.ok) throw new Error('认购数据加载失败');
-                const subscriptions = await response.json();
+                const data = await response.json();
+                const subscriptions = data.recentSubscriptions || [];
                 
                 tbody.innerHTML = '';
                 
-                if (!subscriptions || subscriptions.length === 0) {
+                if (subscriptions.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;">暂无认购公示数据</td></tr>';
                     return;
                 }
                 
-                // 过滤前后7天的认购楼盘
+                // 过滤前后10天的认购楼盘
                 const today = new Date();
+                today.setHours(0, 0, 0, 0);
                 const tenDaysAgo = new Date(today);
                 tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
                 
                 const filtered = subscriptions.filter(p => {
-                    const startDate = new Date(p.startDate);
+                    const startDate = new Date(p.subscribeStart);
                     return startDate >= tenDaysAgo && startDate <= today;
                 });
                 
@@ -474,15 +476,17 @@
                 
                 // 按开始日期倒序排列（最新的在前）
                 filtered.sort((a, b) => {
-                    return new Date(b.startDate) - new Date(a.startDate);
+                    return new Date(b.subscribeStart) - new Date(a.subscribeStart);
                 });
                 
                 filtered.forEach(p => {
                     const tr = document.createElement('tr');
                     
                     // 判断状态
-                    const startDate = new Date(p.startDate);
-                    const endDate = new Date(p.endDate);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const startDate = new Date(p.subscribeStart);
+                    const endDate = new Date(p.subscribeEnd);
                     let status = '';
                     let statusClass = '';
                     if (today < startDate) {
@@ -499,12 +503,12 @@
                     tr.innerHTML = `
                         <td>${p.district || '-'}</td>
                         <td>${p.projectName || '-'}</td>
-                        <td>${p.developer || '-'}</td>
-                        <td>${p.startDate || '-'}</td>
-                        <td>${p.endDate || '-'}</td>
+                        <td>${p.company || '-'}</td>
+                        <td>${p.subscribeStart || '-'}</td>
+                        <td>${p.subscribeEnd || '-'}</td>
                         <td>${p.units ? p.units.toLocaleString() : '-'}</td>
                         <td>${p.area ? p.area.toLocaleString() : '-'}</td>
-                        <td>${p.avgPrice || '-'}</td>
+                        <td>${p.avgPrice ? p.avgPrice.toLocaleString() : '-'}</td>
                         <td><span class="${statusClass}">${status}</span></td>
                     `;
                     tbody.appendChild(tr);

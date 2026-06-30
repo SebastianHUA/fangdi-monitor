@@ -7,452 +7,533 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f7fa; color: #333; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }
-        .header h1 { font-size: 28px; margin-bottom: 8px; }
-        .header p { opacity: 0.9; font-size: 14px; }
-        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 30px; }
-        .stat-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .stat-card .label { font-size: 13px; color: #666; margin-bottom: 8px; }
-        .stat-card .value { font-size: 28px; font-weight: bold; color: #667eea; }
-        .stat-card .unit { font-size: 13px; color: #999; margin-left: 4px; }
-        .stat-card .change { font-size: 12px; margin-top: 8px; }
-        .change.up { color: #f56c6c; }
-        .change.down { color: #67c23a; }
-        .chart-container { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .chart-container h2 { font-size: 18px; margin-bottom: 20px; color: #333; }
-        .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-        .controls { display: flex; gap: 10px; margin-bottom: 20px; }
-        .controls button { padding: 8px 16px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; font-size: 14px; }
-        .controls button.active { background: #667eea; color: white; border-color: #667eea; }
-        .data-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        .data-table th, .data-table td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
-        .data-table th { background: #f8f9fa; font-weight: 600; font-size: 13px; }
-        .data-table td { font-size: 13px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f0f2f5; color: #333; }
+        
+        /* 标题 */
+        .header { background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%); color: white; padding: 20px 30px 16px; }
+        .header h1 { font-size: 22px; font-weight: 600; margin-bottom: 6px; line-height: 1.4; }
+        .header .update-info { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+        
+        .container { max-width: 1440px; margin: 0 auto; padding: 20px; }
+        
+        /* 统计卡片 - 单位不换行，颜色区分 */
+        .stats-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-bottom: 20px; }
+        .stat-card { background: white; border-radius: 10px; padding: 16px 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); text-align: center; }
+        .stat-card .label { font-size: 12px; color: #666; margin-bottom: 8px; font-weight: 500; }
+        .stat-card .value { font-size: 28px; font-weight: 700; line-height: 1.2; display: inline; }
+        .stat-card .unit { font-size: 13px; margin-left: 3px; display: inline; font-weight: 400; }
+        .stat-card .change { font-size: 11px; margin-top: 8px; }
+        
+        /* 一手房卡片 - 蓝色系 */
+        .stat-card.newhouse .value { color: #1a73e8; }
+        .stat-card.newhouse .unit { color: #5a9cf8; }
+        /* 二手房卡片 - 绿色系 */
+        .stat-card.secondhand .value { color: #2e7d32; }
+        .stat-card.secondhand .unit { color: #66bb6a; }
+        
+        .change.up { color: #e53935; }
+        .change.down { color: #43a047; }
+        
+        /* 图表 */
+        .chart-container { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 18px; }
+        .chart-container h2 { font-size: 15px; font-weight: 600; margin-bottom: 14px; color: #333; }
+        .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+        
+        /* 控制按钮 */
+        .controls { display: flex; gap: 8px; margin-bottom: 14px; }
+        .controls button { padding: 6px 14px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; font-size: 13px; color: #555; transition: all 0.2s; }
+        .controls button.active { background: #1a73e8; color: white; border-color: #1a73e8; }
+        .controls button:hover:not(.active) { background: #f5f5f5; }
+        
+        /* 表格 - 横向滚动 */
+        .table-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .data-table { min-width: 900px; width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+        .data-table th, .data-table td { padding: 10px 12px; text-align: right; border-bottom: 1px solid #eee; white-space: nowrap; }
+        .data-table th:first-child, .data-table td:first-child { text-align: left; }
+        .data-table th { background: #f8f9fa; font-weight: 600; color: #555; position: sticky; top: 0; }
+        .data-table tr:hover { background: #f5f8ff; }
+        
         .loading { text-align: center; padding: 60px; color: #999; }
-        .error { text-align: center; padding: 60px; color: #f56c6c; }
-        .last-update { text-align: right; font-size: 13px; color: #999; margin-top: 20px; }
-        .market-review { background: #f8f9fa; border-left: 4px solid #667eea; padding: 15px; margin-top: 20px; border-radius: 6px; }
-        .market-review h3 { font-size: 16px; margin-bottom: 10px; color: #333; }
-        .market-review p { font-size: 14px; line-height: 1.6; color: #666; white-space: pre-wrap; }
-        @media (max-width: 768px) {
+        .error { text-align: center; padding: 60px; color: #e53935; }
+        .last-update { text-align: right; font-size: 12px; color: #999; margin-top: 14px; }
+        .section-title { font-size: 16px; font-weight: 600; color: #333; margin: 24px 0 12px; padding-left: 10px; border-left: 3px solid #1a73e8; }
+        
+        /* 认购公示表格 */
+        .subscription-table { min-width: 1100px; width: 100%; border-collapse: collapse; font-size: 13px; }
+        .subscription-table th, .subscription-table td { padding: 9px 10px; text-align: left; border-bottom: 1px solid #eee; }
+        .subscription-table th { background: #e8f0fe; font-weight: 600; color: #333; position: sticky; top: 0; }
+        .subscription-table tr:hover { background: #f5f8ff; }
+        .badge-new { background: #e53935; color: white; font-size: 10px; padding: 1px 5px; border-radius: 3px; margin-left: 4px; }
+        .badge-ongoing { background: #43a047; color: white; font-size: 10px; padding: 1px 5px; border-radius: 3px; margin-left: 4px; }
+        .badge-ended { background: #999; color: white; font-size: 10px; padding: 1px 5px; border-radius: 3px; margin-left: 4px; }
+        
+        @media (max-width: 1200px) {
+            .stats-grid { grid-template-columns: repeat(3, 1fr); }
             .chart-row { grid-template-columns: 1fr; }
-            .stats-grid { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 768px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .header h1 { font-size: 20px; }
         }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>🏠 上海房地产成交数据监测看板</h1>
-        <p>数据来源：上海市房地产交易中心 (fangdi.com.cn) | 每日18:00更新</p>
+        <p class="update-info" id="updateInfo">数据日期：加载中...（每日8:00更新）</p>
     </div>
-    
+
     <div class="container">
+        <!-- 统计卡片 -->
         <div class="stats-grid">
-            <div class="stat-card">
-                <div class="label">🏗️ 一手房今日成交</div>
-                <div class="value" id="newHouseCount">--</div>
-                <div class="unit">套</div>
+            <div class="stat-card newhouse">
+                <div class="label">🏗️ 一手房网签</div>
+                <span class="value" id="newHouseCount">--</span><span class="unit">套</span>
                 <div class="change" id="newHouseChange"></div>
             </div>
-            <div class="stat-card">
-                <div class="label">🏗️ 一手房今日面积</div>
-                <div class="value" id="newHouseArea">--</div>
-                <div class="unit">㎡</div>
-            </div>
-            <div class="stat-card">
-                <div class="label">🏗️ 一手房可售套数</div>
-                <div class="value" id="newHouseAvailable">--</div>
-                <div class="unit">套</div>
-            </div>
-            <div class="stat-card">
-                <div class="label">🏘️ 二手房昨日成交</div>
-                <div class="value" id="secondHandCount">--</div>
-                <div class="unit">套</div>
+            <div class="stat-card secondhand">
+                <div class="label">🏘️ 二手房网签</div>
+                <span class="value" id="secondHandCount">--</span><span class="unit">套</span>
                 <div class="change" id="secondHandChange"></div>
             </div>
-            <div class="stat-card">
-                <div class="label">🏘️ 二手房昨日面积</div>
-                <div class="value" id="secondHandArea">--</div>
-                <div class="unit">㎡</div>
+            <div class="stat-card newhouse">
+                <div class="label">🏗️ 一手房面积</div>
+                <span class="value" id="newHouseArea">--</span><span class="unit">㎡</span>
             </div>
-            <div class="stat-card">
-                <div class="label">🏘️ 二手房挂牌套数</div>
-                <div class="value" id="secondHandListing">--</div>
-                <div class="unit">套</div>
+            <div class="stat-card secondhand">
+                <div class="label">🏘️ 二手房面积</div>
+                <span class="value" id="secondHandArea">--</span><span class="unit">㎡</span>
             </div>
-        </div>
-        
-        <div class="controls">
-            <button class="active" onclick="setView('daily')">日度</button>
-            <button onclick="setView('monthly')">月度</button>
-            <button onclick="setView('yearly')">年度</button>
-        </div>
-        
-        <div class="chart-row">
-            <div class="chart-container">
-                <h2>📈 一手房成交趋势</h2>
-                <canvas id="newHouseChart"></canvas>
+            <div class="stat-card newhouse">
+                <div class="label">🏢 一手房可售</div>
+                <span class="value" id="availableUnits">--</span><span class="unit">套</span>
             </div>
-            <div class="chart-container">
-                <h2>📈 二手房成交趋势</h2>
-                <canvas id="secondHandChart"></canvas>
+            <div class="stat-card secondhand">
+                <div class="label">📋 二手房挂牌</div>
+                <span class="value" id="listingCount">--</span><span class="unit">套</span>
             </div>
         </div>
-        
+
+        <!-- 趋势图 -->
         <div class="chart-container">
-            <h2>📊 近期成交对比</h2>
-            <canvas id="compareChart"></canvas>
+            <div class="controls">
+                <button class="active" onclick="setView('daily')">日报</button>
+                <button onclick="setView('monthly')">月报</button>
+                <button onclick="setView('yearly')">年报</button>
+            </div>
+            <div class="chart-row">
+                <div>
+                    <h2>一手房网签趋势</h2>
+                    <canvas id="newHouseChart"></canvas>
+                </div>
+                <div>
+                    <h2>二手房网签趋势</h2>
+                    <canvas id="secondHandChart"></canvas>
+                </div>
+            </div>
         </div>
-        
+
+        <!-- 认购公示 -->
+        <!-- 近期认购楼盘公示 -->
+        <div class="section-title">📢 近期认购楼盘公示 <span style="font-size:12px;color:#999;font-weight:normal;margin-left:8px;">右滑查看更多信息</span></div>
         <div class="chart-container">
-            <h2>📋 历史数据</h2>
-            <table class="data-table" id="dataTable">
-                <thead>
-                    <tr>
-                        <th>日期</th>
-                        <th>一手房(套)</th>
-                        <th>一手房(㎡)</th>
-                        <th>一手房可售(套)</th>
-                        <th>二手房(套)</th>
-                        <th>二手房(㎡)</th>
-                        <th>二手房挂牌(套)</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody">
-                    <tr><td colspan="7" class="loading">加载中...</td></tr>
-                </tbody>
-            </table>
+            <div class="table-wrapper">
+                <table class="subscription-table" id="subscriptionTable">
+                    <thead>
+                        <tr>
+                            <th>所在区</th>
+                            <th>项目名称</th>
+                            <th>开发企业</th>
+                            <th>认购开始</th>
+                            <th>认购结束</th>
+                            <th>套数</th>
+                            <th>面积(㎡)</th>
+                            <th>备案均价</th>
+                            <th>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody id="subscriptionBody">
+                        <tr><td colspan="9" style="text-align:center;color:#999;">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 历史数据 -->
+        <div class="section-title">📊 历史数据明细表 <span style="font-size:12px;color:#999;font-weight:normal;margin-left:8px;">右滑查看更多信息</span></div>
+        <div class="chart-container">
+            <div class="table-wrapper">
+                <table class="data-table" id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>日期</th>
+                            <th>一手房网签(套)</th>
+                            <th>一手房面积(㎡)</th>
+                            <th>一手房可售(套)</th>
+                            <th>二手房网签(套)</th>
+                            <th>二手房面积(㎡)</th>
+                            <th>二手房挂牌(套)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr><td colspan="7" style="text-align:center;color:#999;">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
             <div class="last-update" id="lastUpdate"></div>
         </div>
-
-        <div class="chart-container market-review" id="marketReviewCard" style="display:none;">
-            <h3>📝 楼市回顾</h3>
-            <p id="marketReviewText"></p>
-        </div>
-
-        <div class="chart-container" id="subscriptionCard" style="display:none;">
-            <h2>🏗️ 近期认购楼盘公示</h2>
-            <table class="data-table" id="subscriptionTable">
-                <thead>
-                    <tr>
-                        <th>项目名称</th>
-                        <th>所在区</th>
-                        <th>认购开始</th>
-                        <th>认购结束</th>
-                        <th>套数</th>
-                        <th>备案均价(元/㎡)</th>
-                    </tr>
-                </thead>
-                <tbody id="subscriptionBody">
-                    <tr><td colspan="6" class="loading">加载中...</td></tr>
-                </tbody>
-            </table>
-        </div>
     </div>
-    
+
     <script>
         let allData = [];
         let currentView = 'daily';
         let charts = {};
-        
+
+        // 获取数据日期（直接从最新数据中获取）
+        function getDataDate() {
+            if (allData && allData.length > 0) {
+                return allData[0].date;  // 最新数据的日期
+            }
+            return '未知';
+        }
+
         // 加载数据
         async function loadData() {
             try {
-                const response = await fetch('data/fangdi_data.json?t=' + Date.now());
-                if (!response.ok) throw new Error('HTTP ' + response.status);
-                let raw = await response.json();
-
-                // 兼容两种格式：对象（单日）转数组
-                if (raw && !Array.isArray(raw)) {
-                    raw = [raw];
+                console.log('[看板] 开始加载数据...');
+                const response = await fetch('./data/fangdi_data.json?t=' + Date.now());
+                if (!response.ok) throw new Error('数据加载失败: ' + response.status);
+                allData = await response.json();
+                console.log('[看板] 数据加载成功:', allData);
+                
+                if (!allData || allData.length === 0) {
+                    document.getElementById('updateInfo').textContent = '暂无数据';
+                    return;
                 }
-                allData = Array.isArray(raw) ? raw : [];
                 
-                // 过滤无效数据（date为空或newHouse/secondHand全为null）
-                allData = allData.filter(d => {
-                    if (!d.date) return false;
-                    if (!d.newHouse && !d.secondHand) return false;
-                    if (d.newHouse && d.newHouse.todaySignUnits === null && d.newHouse.todaySignArea === null &&
-                        d.secondHand && d.secondHand.yesterdaySaleCount === null && d.secondHand.yesterdaySaleArea === null) {
-                        return false;
-                    }
-                    return true;
-                });
+                // 按日期降序排序
+                allData.sort((a, b) => b.date > a.date ? 1 : -1);
                 
-                allData.sort((a, b) => a.date > b.date ? 1 : -1);
-                updateDashboard();
+                // 逐个更新，如果某个失败也不影响其他
+                try { updateDashboard(); } catch(e) { console.error('updateDashboard失败:', e); }
+                try { updateCharts(); } catch(e) { console.error('updateCharts失败:', e); }
+                try { updateTable(); } catch(e) { console.error('updateTable失败:', e); }
+                try { await updateSubscription(); } catch(e) { console.error('updateSubscription失败:', e); }
+                
+                console.log('[看板] 所有数据更新完成');
+                
             } catch (e) {
-                console.error('Load error:', e);
-                const container = document.querySelector('.container');
-                if (container) {
-                    container.innerHTML = '<div class="error">数据加载失败：' + e.message + '<br><br>请确保 data/fangdi_data.json 存在且格式正确（数组格式）</div>';
-                }
+                console.error('[看板] 加载失败:', e);
+                document.getElementById('updateInfo').textContent = '数据加载失败：' + e.message;
+                // 显示详细错误信息在页面上
+                document.getElementById('newHouseCount').textContent = '?';
+                document.getElementById('secondHandCount').textContent = '?';
             }
         }
-        
+
         // 更新看板
         function updateDashboard() {
-            if (allData.length === 0) return;
+            const latest = allData[0];
+            const prev = allData[1];
             
-            const latest = allData[allData.length - 1];
-            const prev = allData.length > 1 ? allData[allData.length - 2] : null;
+            // 更新数据日期（T-1日）
+            const dataDate = getDataDate();
+            document.getElementById('updateInfo').textContent = '数据日期：' + dataDate + '（每日8:00更新）';
             
-            // 更新统计卡片
-            document.getElementById('newHouseCount').textContent = latest.newHouse.todaySaleCount || '--';
-            document.getElementById('newHouseArea').textContent = latest.newHouse.todaySaleArea ? latest.newHouse.todaySaleArea.toLocaleString() : '--';
-            document.getElementById('newHouseAvailable').textContent = latest.newHouse.availableUnits ? latest.newHouse.availableUnits.toLocaleString() : '--';
-            document.getElementById('secondHandCount').textContent = latest.secondHand.yesterdaySaleCount || '--';
-            document.getElementById('secondHandArea').textContent = latest.secondHand.yesterdaySaleArea ? latest.secondHand.yesterdaySaleArea.toLocaleString() : '--';
-            document.getElementById('secondHandListing').textContent = latest.secondHand.listingCount ? latest.secondHand.listingCount.toLocaleString() : '--';
+            // 一手房网签
+            const nhUnits = latest.newHouse?.todaySignUnits ?? latest.newHouse?.todaySaleCount ?? 0;
+            document.getElementById('newHouseCount').textContent = nhUnits.toLocaleString();
             
-            // 更新环比
+            // 一手房面积（取整数）
+            const nhArea = latest.newHouse?.todaySignArea ?? latest.newHouse?.todaySaleArea ?? 0;
+            document.getElementById('newHouseArea').textContent = Math.round(nhArea).toLocaleString();
+            
+            // 二手房网签
+            const shUnits = latest.secondHand?.yesterdaySaleCount ?? 0;
+            document.getElementById('secondHandCount').textContent = shUnits.toLocaleString();
+            
+            // 二手房面积（取整数，直接显示㎡）
+            const shArea = latest.secondHand?.yesterdaySaleArea ?? 0;
+            document.getElementById('secondHandArea').textContent = Math.round(shArea).toLocaleString();
+            
+            // 一手房可售
+            const avail = latest.newHouse?.availableUnits ?? 0;
+            document.getElementById('availableUnits').textContent = avail.toLocaleString();
+            
+            // 二手房挂牌
+            const listing = latest.secondHand?.listingCount ?? 0;
+            document.getElementById('listingCount').textContent = listing.toLocaleString();
+            
+            // 环比
             if (prev) {
-                const newHouseChange = ((latest.newHouse.todaySaleCount - prev.newHouse.todaySaleCount) / prev.newHouse.todaySaleCount * 100).toFixed(1);
-                const secondHandChange = ((latest.secondHand.yesterdaySaleCount - prev.secondHand.yesterdaySaleCount) / prev.secondHand.yesterdaySaleCount * 100).toFixed(1);
+                const nhChange = prev.newHouse?.todaySignUnits ? 
+                    ((nhUnits - prev.newHouse.todaySignUnits) / prev.newHouse.todaySignUnits * 100).toFixed(1) : 0;
+                const shChange = prev.secondHand?.yesterdaySaleCount ? 
+                    ((shUnits - prev.secondHand.yesterdaySaleCount) / prev.secondHand.yesterdaySaleCount * 100).toFixed(1) : 0;
                 
-                document.getElementById('newHouseChange').innerHTML = `环比 ${newHouseChange > 0 ? '↑' : '↓'} ${Math.abs(newHouseChange)}%`;
-                document.getElementById('newHouseChange').className = 'change ' + (newHouseChange > 0 ? 'up' : 'down');
+                document.getElementById('newHouseChange').innerHTML = 
+                    (nhChange >= 0 ? '▲' : '▼') + ' ' + Math.abs(nhChange) + '%';
+                document.getElementById('newHouseChange').className = 'change ' + (nhChange >= 0 ? 'up' : 'down');
                 
-                document.getElementById('secondHandChange').innerHTML = `环比 ${secondHandChange > 0 ? '↑' : '↓'} ${Math.abs(secondHandChange)}%`;
-                document.getElementById('secondHandChange').className = 'change ' + (secondHandChange > 0 ? 'up' : 'down');
+                document.getElementById('secondHandChange').innerHTML = 
+                    (shChange >= 0 ? '▲' : '▼') + ' ' + Math.abs(shChange) + '%';
+                document.getElementById('secondHandChange').className = 'change ' + (shChange >= 0 ? 'up' : 'down');
             }
             
-            // 更新图表
-            updateCharts();
-            
-            // 更新表格
-            updateTable();
-            
-            // 更新楼市回顾
-            updateMarketReview();
-            
-            // 更新时间
-            document.getElementById('lastUpdate').textContent = '最后更新：' + latest.date;
+            document.getElementById('lastUpdate').textContent = '最后更新：' + new Date().toLocaleString('zh-CN');
         }
-        
-        // 更新图表
+
+        // 更新趋势图 - 细线，无边框
         function updateCharts() {
-            const data = getViewData();
-            const labels = data.map(d => d.label);
+            const viewData = getViewData();
             
             // 一手房趋势图
             if (charts.newHouse) charts.newHouse.destroy();
-            const newHouseCtx = document.getElementById('newHouseChart').getContext('2d');
-            charts.newHouse = new Chart(newHouseCtx, {
+            const nhCtx = document.getElementById('newHouseChart').getContext('2d');
+            charts.newHouse = new Chart(nhCtx, {
                 type: 'line',
                 data: {
-                    labels: labels,
+                    labels: viewData.map(d => d.label),
                     datasets: [{
-                        label: '成交套数',
-                        data: data.map(d => d.newHouseCount),
-                        borderColor: '#667eea',
-                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                        tension: 0.4,
-                        yAxisID: 'y'
-                    }, {
-                        label: '成交面积(万㎡)',
-                        data: data.map(d => d.newHouseArea),
-                        borderColor: '#764ba2',
-                        backgroundColor: 'rgba(118, 75, 162, 0.1)',
-                        tension: 0.4,
-                        yAxisID: 'y1'
+                        label: '网签套数',
+                        data: viewData.map(d => d.newHouseCount),
+                        borderColor: '#1a73e8',
+                        backgroundColor: 'rgba(26,115,232,0.08)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 2,
+                        pointHoverRadius: 5
                     }]
                 },
                 options: {
                     responsive: true,
-                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { 
+                            display: true,
+                            labels: { 
+                                boxWidth: 20,  // 减小示例图标宽度
+                                boxHeight: 2   // 细线
+                            } 
+                        }
+                    },
                     scales: {
-                        y: { type: 'linear', position: 'left', title: { display: true, text: '套数' } },
-                        y1: { type: 'linear', position: 'right', title: { display: true, text: '万㎡' }, grid: { drawOnChartArea: false } }
+                        y: { beginAtZero: false, grid: { color: '#f0f0f0' } },
+                        x: { grid: { display: false } }
                     }
                 }
             });
             
             // 二手房趋势图
             if (charts.secondHand) charts.secondHand.destroy();
-            const secondHandCtx = document.getElementById('secondHandChart').getContext('2d');
-            charts.secondHand = new Chart(secondHandCtx, {
+            const shCtx = document.getElementById('secondHandChart').getContext('2d');
+            charts.secondHand = new Chart(shCtx, {
                 type: 'line',
                 data: {
-                    labels: labels,
+                    labels: viewData.map(d => d.label),
                     datasets: [{
-                        label: '成交套数',
-                        data: data.map(d => d.secondHandCount),
-                        borderColor: '#f093fb',
-                        backgroundColor: 'rgba(240, 147, 251, 0.1)',
-                        tension: 0.4,
-                        yAxisID: 'y'
-                    }, {
-                        label: '成交面积(万㎡)',
-                        data: data.map(d => d.secondHandArea),
-                        borderColor: '#f5576c',
-                        backgroundColor: 'rgba(245, 87, 108, 0.1)',
-                        tension: 0.4,
-                        yAxisID: 'y1'
+                        label: '网签套数',
+                        data: viewData.map(d => d.secondHandCount),
+                        borderColor: '#2e7d32',
+                        backgroundColor: 'rgba(46,125,50,0.08)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 2,
+                        pointHoverRadius: 5
                     }]
                 },
                 options: {
                     responsive: true,
-                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { 
+                            display: true,
+                            labels: { 
+                                boxWidth: 20,  // 减小示例图标宽度
+                                boxHeight: 2   // 细线
+                            } 
+                        }
+                    },
                     scales: {
-                        y: { type: 'linear', position: 'left', title: { display: true, text: '套数' } },
-                        y1: { type: 'linear', position: 'right', title: { display: true, text: '万㎡' }, grid: { drawOnChartArea: false } }
+                        y: { beginAtZero: false, grid: { color: '#f0f0f0' } },
+                        x: { grid: { display: false } }
                     }
                 }
             });
-            
-            // 对比图
-            if (charts.compare) charts.compare.destroy();
-            const compareCtx = document.getElementById('compareChart').getContext('2d');
-            const recentData = data.slice(-7); // 最近7天
-            charts.compare = new Chart(compareCtx, {
-                type: 'bar',
-                data: {
-                    labels: recentData.map(d => d.label),
-                    datasets: [{
-                        label: '一手房(套)',
-                        data: recentData.map(d => d.newHouseCount),
-                        backgroundColor: 'rgba(102, 126, 234, 0.7)'
-                    }, {
-                        label: '二手房(套)',
-                        data: recentData.map(d => d.secondHandCount),
-                        backgroundColor: 'rgba(240, 147, 251, 0.7)'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: { y: { beginAtZero: true } }
-                }
-            });
         }
-        
+
         // 获取视图数据
         function getViewData() {
             if (currentView === 'daily') {
-                return allData.map(d => ({
-                    label: d.date.slice(5), // MM-DD
-                    newHouseCount: d.newHouse.todaySaleCount,
-                    newHouseArea: d.newHouse.todaySaleArea ? d.newHouse.todaySaleArea / 10000 : 0, // ㎡ → 万㎡
-                    secondHandCount: d.secondHand.yesterdaySaleCount,
-                    secondHandArea: d.secondHand.yesterdaySaleArea ? d.secondHand.yesterdaySaleArea / 10000 : 0 // ㎡ → 万㎡
+                return allData.slice(0, 30).reverse().map(d => ({
+                    label: d.date.slice(5),
+                    newHouseCount: d.newHouse?.todaySignUnits ?? d.newHouse?.todaySaleCount ?? 0,
+                    newHouseArea: d.newHouse?.todaySignArea ?? d.newHouse?.todaySaleArea ?? 0,
+                    secondHandCount: d.secondHand?.yesterdaySaleCount ?? 0,
+                    secondHandArea: (d.secondHand?.yesterdaySaleArea ?? 0) / 10000
                 }));
             } else if (currentView === 'monthly') {
                 const monthly = {};
                 allData.forEach(d => {
                     const month = d.date.slice(0, 7);
                     if (!monthly[month]) monthly[month] = { count: 0, area: 0, secondCount: 0, secondArea: 0, days: 0 };
-                    monthly[month].count += d.newHouse.todaySaleCount || 0;
-                    monthly[month].area += d.newHouse.todaySaleArea || 0;
-                    monthly[month].secondCount += d.secondHand.yesterdaySaleCount || 0;
-                    monthly[month].secondArea += d.secondHand.yesterdaySaleArea || 0;
+                    monthly[month].count += d.newHouse?.todaySignUnits ?? d.newHouse?.todaySaleCount ?? 0;
+                    monthly[month].area += d.newHouse?.todaySignArea ?? d.newHouse?.todaySaleArea ?? 0;
+                    monthly[month].secondCount += d.secondHand?.yesterdaySaleCount ?? 0;
+                    monthly[month].secondArea += (d.secondHand?.yesterdaySaleArea ?? 0) / 10000;
                     monthly[month].days++;
                 });
                 return Object.entries(monthly).map(([month, data]) => ({
                     label: month,
                     newHouseCount: Math.round(data.count / data.days),
-                    newHouseArea: Math.round(data.area / data.days / 10000 * 100) / 100, // 平均面积(万㎡)
+                    newHouseArea: Math.round(data.area / data.days * 100) / 100,
                     secondHandCount: Math.round(data.secondCount / data.days),
-                    secondHandArea: Math.round(data.secondArea / data.days / 10000 * 100) / 100
+                    secondHandArea: Math.round(data.secondArea / data.days * 100) / 100
                 }));
             } else {
                 const yearly = {};
                 allData.forEach(d => {
                     const year = d.date.slice(0, 4);
                     if (!yearly[year]) yearly[year] = { count: 0, area: 0, secondCount: 0, secondArea: 0, days: 0 };
-                    yearly[year].count += d.newHouse.todaySaleCount || 0;
-                    yearly[year].area += d.newHouse.todaySaleArea || 0;
-                    yearly[year].secondCount += d.secondHand.yesterdaySaleCount || 0;
-                    yearly[year].secondArea += d.secondHand.yesterdaySaleArea || 0;
+                    yearly[year].count += d.newHouse?.todaySignUnits ?? d.newHouse?.todaySaleCount ?? 0;
+                    yearly[year].area += d.newHouse?.todaySignArea ?? d.newHouse?.todaySaleArea ?? 0;
+                    yearly[year].secondCount += d.secondHand?.yesterdaySaleCount ?? 0;
+                    yearly[year].secondArea += (d.secondHand?.yesterdaySaleArea ?? 0) / 10000;
                     yearly[year].days++;
                 });
                 return Object.entries(yearly).map(([year, data]) => ({
                     label: year,
                     newHouseCount: Math.round(data.count / data.days),
-                    newHouseArea: Math.round(data.area / data.days / 10000 * 100) / 100,
+                    newHouseArea: Math.round(data.area / data.days * 100) / 100,
                     secondHandCount: Math.round(data.secondCount / data.days),
-                    secondHandArea: Math.round(data.secondArea / data.days / 10000 * 100) / 100
+                    secondHandArea: Math.round(data.secondArea / data.days * 100) / 100
                 }));
             }
         }
-        
-        // 更新表格
+
+        // 更新表格（所有面积取整数）
         function updateTable() {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
             
-            const recent = allData.slice(-30).reverse(); // 最近30天
+            const recent = allData.slice(0, 30);
             recent.forEach(d => {
                 const tr = document.createElement('tr');
+                const nhUnits = d.newHouse?.todaySignUnits ?? d.newHouse?.todaySaleCount ?? 0;
+                const nhArea = Math.round(d.newHouse?.todaySignArea ?? d.newHouse?.todaySaleArea ?? 0);
+                const shUnits = d.secondHand?.yesterdaySaleCount ?? 0;
+                const shArea = Math.round(d.secondHand?.yesterdaySaleArea ?? 0);  // 直接显示㎡，取整数
+                const avail = d.newHouse?.availableUnits ?? 0;
+                const listing = d.secondHand?.listingCount ?? 0;
+                
                 tr.innerHTML = `
                     <td>${d.date}</td>
-                    <td>${d.newHouse.todaySaleCount || '--'}</td>
-                    <td>${d.newHouse.todaySaleArea ? d.newHouse.todaySaleArea.toLocaleString() : '--'}</td>
-                    <td>${d.newHouse.availableUnits ? d.newHouse.availableUnits.toLocaleString() : '--'}</td>
-                    <td>${d.secondHand.yesterdaySaleCount || '--'}</td>
-                    <td>${d.secondHand.yesterdaySaleArea ? d.secondHand.yesterdaySaleArea.toLocaleString() : '--'}</td>
-                    <td>${d.secondHand.listingCount ? d.secondHand.listingCount.toLocaleString() : '--'}</td>
+                    <td>${nhUnits.toLocaleString()}</td>
+                    <td>${nhArea.toLocaleString()}</td>
+                    <td>${avail.toLocaleString()}</td>
+                    <td>${shUnits.toLocaleString()}</td>
+                    <td>${shArea.toLocaleString()}</td>
+                    <td>${listing.toLocaleString()}</td>
                 `;
                 tbody.appendChild(tr);
             });
         }
-        
-        // 更新楼市回顾
-        function updateMarketReview() {
-            const latest = allData[allData.length - 1];
-            if (latest.marketReview) {
-                document.getElementById('marketReviewCard').style.display = 'block';
-                document.getElementById('marketReviewText').textContent = latest.marketReview;
-            }
-        }
-        
-        // 加载认购楼盘数据
-        async function loadSubscriptionData() {
+
+        // 更新认购公示
+        async function updateSubscription() {
+            const tbody = document.getElementById('subscriptionBody');
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;">加载中...</td></tr>';
+            
             try {
-                const response = await fetch('data/subscription_data.json?t=' + Date.now());
-                if (!response.ok) return;
+                // 从单独的数据文件中读取认购公示
+                const response = await fetch('./data/subscription_data.json?t=' + Date.now());
+                if (!response.ok) throw new Error('认购数据加载失败');
                 const data = await response.json();
+                const subscriptions = data.recentSubscriptions || [];
                 
-                if (data.recentSubscriptions && data.recentSubscriptions.length > 0) {
-                    document.getElementById('subscriptionCard').style.display = 'block';
-                    
-                    const tbody = document.getElementById('subscriptionBody');
-                    tbody.innerHTML = '';
-                    
-                    data.recentSubscriptions.forEach(r => {
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td>${r.projectName}</td>
-                            <td>${r.district}</td>
-                            <td>${r.subscribeStart}</td>
-                            <td>${r.subscribeEnd}</td>
-                            <td>${r.units}</td>
-                            <td>${r.avgPrice.toLocaleString()}</td>
-                        `;
-                        tbody.appendChild(tr);
-                    });
-                    
-                    console.log(`[认购] ✅ 显示 ${data.recentSubscriptions.length} 条认购楼盘`);
+                tbody.innerHTML = '';
+                
+                if (subscriptions.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;">暂无认购公示数据</td></tr>';
+                    return;
                 }
+                
+                // 过滤前后10天的认购楼盘
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const tenDaysAgo = new Date(today);
+                tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+                
+                const filtered = subscriptions.filter(p => {
+                    const startDate = new Date(p.subscribeStart);
+                    return startDate >= tenDaysAgo && startDate <= today;
+                });
+                
+                if (filtered.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;">近10天无认购楼盘</td></tr>';
+                    return;
+                }
+                
+                // 按开始日期倒序排列（最新的在前）
+                filtered.sort((a, b) => {
+                    return new Date(b.subscribeStart) - new Date(a.subscribeStart);
+                });
+                
+                filtered.forEach(p => {
+                    const tr = document.createElement('tr');
+                    
+                    // 判断状态
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const startDate = new Date(p.subscribeStart);
+                    const endDate = new Date(p.subscribeEnd);
+                    let status = '';
+                    let statusClass = '';
+                    if (today < startDate) {
+                        status = '即将开始';
+                        statusClass = 'badge-new';
+                    } else if (today > endDate) {
+                        status = '已结束';
+                        statusClass = 'badge-ended';
+                    } else {
+                        status = '进行中';
+                        statusClass = 'badge-ongoing';
+                    }
+                    
+                    tr.innerHTML = `
+                        <td>${p.district || '-'}</td>
+                        <td>${p.projectName || '-'}</td>
+                        <td>${p.company || '-'}</td>
+                        <td>${p.subscribeStart || '-'}</td>
+                        <td>${p.subscribeEnd || '-'}</td>
+                        <td>${p.units ? p.units.toLocaleString() : '-'}</td>
+                        <td>${p.area ? p.area.toLocaleString() : '-'}</td>
+                        <td>${p.avgPrice ? p.avgPrice.toLocaleString() : '-'}</td>
+                        <td><span class="${statusClass}">${status}</span></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                
             } catch (e) {
-                console.log('[认购] 加载失败:', e.message);
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#e53935;">认购数据加载失败：' + e.message + '</td></tr>';
             }
         }
-        
-        // 设置视图
+
+        // 切换视图
         function setView(view) {
             currentView = view;
-            document.querySelectorAll('.controls button').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
+            document.querySelectorAll('.controls button').forEach((btn, i) => {
+                btn.classList.toggle('active', 
+                    (i === 0 && view === 'daily') || 
+                    (i === 1 && view === 'monthly') || 
+                    (i === 2 && view === 'yearly'));
+            });
             updateCharts();
         }
-        
+
         // 初始化
         loadData();
-        loadSubscriptionData();
-        setInterval(loadData, 300000); // 5分钟刷新一次
-        setInterval(loadSubscriptionData, 300000); // 5分钟刷新一次
+        setInterval(loadData, 30 * 60 * 1000);
     </script>
 </body>
 </html>
