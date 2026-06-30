@@ -8,7 +8,7 @@ const http = require('http');
 const fs = require('fs');
 
 // ========== 配置 ==========
-const CDP_PROXY = 'http://localhost:3456';
+const CDP_PROXY = 'http://127.0.0.1:3456';
 let targetId = null;
 
 // 命令行参数解析
@@ -187,16 +187,16 @@ async function fetchHomePageData() {
     };
     
     // 提取一手房当日签约套数
-    const signUnitsMatch = text.match(/一手房签约套数：(\d+)套/);
+    const signUnitsMatch = text.match(/签约套数[：:]\s*(\d+)/) || text.match(/一手房[成交签约]{2}套数[：:]\s*(\d+)/);
     if (signUnitsMatch) {
         result.todaySignUnits = parseInt(signUnitsMatch[1]);
         console.log(`  ✅ 一手房签约套数: ${result.todaySignUnits} 套`);
     } else {
-        console.log(`  ⚠️ 未找到一手房签约套数`);
+        console.log(`  ⚠️ 未找到一手房签约套数，原始文本前500字符: ${text.substring(0, 500)}`);
     }
     
     // 提取一手房当日签约面积（㎡）
-    const signAreaMatch = text.match(/一手房签约面积：([\d.]+)㎡/);
+    const signAreaMatch = text.match(/签约面积[：:]\s*([\d.]+)/) || text.match(/一手房[成交签约]{2}面积[：:]\s*([\d.]+)/);
     if (signAreaMatch) {
         result.todaySignArea = Math.round(parseFloat(signAreaMatch[1]));
         console.log(`  ✅ 一手房签约面积: ${result.todaySignArea} ㎡`);
@@ -226,30 +226,32 @@ async function fetchHomePageData() {
     return result;
 }
 
-// 2. 抓取一手房成交数据
+// 2. 抓取一手房成交数据（从交易统计页面）
 async function fetchNewHouseData() {
-    console.log('\n[2/2] 抓取一手房成交数据...');
+    console.log('\n[2/2] 抓取一手房成交数据（trade页面）...');
     
     await createTab('https://www.fangdi.com.cn/trade/trade.html');
     
+    // 提取页面文本
     const textResult = await evalJS('document.body.innerText');
     
-    // 确保text是字符串
     let text = '';
-    if (typeof textResult === 'object' && textResult.value) {
-        text = textResult.value;
+    if (typeof textResult === 'object' && textResult.value !== undefined) {
+        text = String(textResult.value);
     } else if (typeof textResult === 'string') {
         text = textResult;
     } else {
         console.log(`  ⚠️ eval返回格式异常:`, textResult);
         await closeTab();
-        return result;
+        return null;
     }
     
     const result = {
         date: new Date().toISOString().split('T')[0],
         todaySignUnits: null,
         todaySignArea: null,
+        availableUnits: null,
+        availableArea: null,
         cumSaleUnits: null,
         cumSaleArea: null,
         newOpenUnits: null
@@ -259,36 +261,43 @@ async function fetchNewHouseData() {
     const todayMatch = text.match(/今日共预[\/]出售各类商品房(\d+)套/);
     if (todayMatch) {
         result.todaySignUnits = parseInt(todayMatch[1]);
+        console.log(`  ✅ 今日成交套数: ${result.todaySignUnits} 套`);
     }
     
     // 提取今日成交面积（万㎡ -> ㎡）
     const todayAreaMatch = text.match(/成交面积[\s\S]{0,50}?([\d.]+)万/);
     if (todayAreaMatch) {
         result.todaySignArea = Math.round(parseFloat(todayAreaMatch[1]) * 10000);
+        console.log(`  ✅ 今日成交面积: ${result.todaySignArea} ㎡`);
     }
     
     // 提取今年累计成交套数
     const cumMatch = text.match(/今年累计成交[\s\S]{0,200}?(\d+)套/);
     if (cumMatch) {
         result.cumSaleUnits = parseInt(cumMatch[1]);
+        console.log(`  ✅ 今年累计: ${result.cumSaleUnits} 套`);
     }
     
     // 提取今年累计成交面积（万㎡ -> ㎡）
     const cumAreaMatch = text.match(/累计成交面积[\s\S]{0,100}?([\d.]+)万/);
     if (cumAreaMatch) {
         result.cumSaleArea = Math.round(parseFloat(cumAreaMatch[1]) * 10000);
+        console.log(`  ✅ 累计面积: ${result.cumSaleArea} ㎡`);
     }
     
     // 提取新开房源
     const newOpenMatch = text.match(/今日新开房源共计(\d+)个开盘单元/);
     if (newOpenMatch) {
         result.newOpenUnits = parseInt(newOpenMatch[1]);
+        console.log(`  ✅ 新开房源: ${result.newOpenUnits} 个单元`);
     }
     
-    console.log(`  ✅ 今日成交: ${result.todaySignUnits || '未提取'} 套`);
-    console.log(`  ✅ 今日成交面积: ${result.todaySignArea || '未提取'} ㎡`);
-    console.log(`  ✅ 今年累计: ${result.cumSaleUnits || '未提取'} 套`);
-    console.log(`  ✅ 新开房源: ${result.newOpenUnits || '未提取'} 个单元`);
+    // 提取可售套数（从页面文本）
+    const availableMatch = text.match(/可售[住宅套数]*[：:]\s*([\d,]+)/) || text.match(/可售[\s\S]{0,50}?([\d,]+)套/);
+    if (availableMatch) {
+        result.availableUnits = parseInt(availableMatch[1].replace(/,/g, ''));
+        console.log(`  ✅ 可售套数: ${result.availableUnits} 套`);
+    }
     
     await closeTab();
     
@@ -323,34 +332,178 @@ async function fetchSecondHandData() {
         cumSaleArea: null
     };
     
-    // 提取昨日成交套数
-    const yesterdayMatch = text.match(/昨日成交[\s\S]{0,50}?(\d+)套/);
-    if (yesterdayMatch) {
-        result.yesterdaySaleCount = parseInt(yesterdayMatch[1]);
+    // 提取昨日成交套数 - 多种匹配模式
+    const yesterdayPatterns = [
+        /昨日成交[\s\S]{0,100}?(\d+)套/,
+        /昨日[\s\S]{0,50}?(\d+)套/,
+        /成交套数[：:][\s\S]{0,20}?(\d+)/
+    ];
+    for (const pattern of yesterdayPatterns) {
+        const match = text.match(pattern);
+        if (match) {
+            result.yesterdaySaleCount = parseInt(match[1]);
+            console.log(`  ✅ 匹配到昨日成交套数: ${result.yesterdaySaleCount} (模式: ${pattern})`);
+            break;
+        }
     }
     
-    // 提取昨日成交面积（万㎡ -> ㎡）
-    const yesterdayAreaMatch = text.match(/昨日成交面积[\s\S]{0,50}?([\d.]+)万/);
-    if (yesterdayAreaMatch) {
-        result.yesterdaySaleArea = Math.round(parseFloat(yesterdayAreaMatch[1]) * 10000);
+    // 提取昨日成交面积 - 多种匹配模式（支持万㎡和㎡）
+    const yesterdayAreaPatterns = [
+        /昨日成交面积[\s\S]{0,100}?([\d.]+)万/,  // 万㎡格式
+        /昨日成交面积[\s\S]{0,100}?([\d.]+)㎡/,   // 直接㎡格式
+        /成交面积[：:][\s\S]{0,50}?([\d.]+)万/,
+        /成交面积[：:][\s\S]{0,50}?([\d.]+)㎡/,
+        /昨日[\s\S]{0,100}?([\d.]+)万㎡/,
+        /昨日[\s\S]{0,100}?([\d.]+)㎡/
+    ];
+    for (const pattern of yesterdayAreaPatterns) {
+        const match = text.match(pattern);
+        if (match) {
+            const value = parseFloat(match[1]);
+            // 判断是万㎡还是㎡
+            if (pattern.source.includes('万')) {
+                result.yesterdaySaleArea = Math.round(value * 10000);
+            } else {
+                result.yesterdaySaleArea = Math.round(value);
+            }
+            console.log(`  ✅ 匹配到昨日成交面积: ${result.yesterdaySaleArea} ㎡ (原始: ${value}, 模式: ${pattern})`);
+            break;
+        }
     }
     
-    // 提取今年累计成交套数
-    const cumMatch = text.match(/今年累计[\s\S]{0,200}?(\d+)套/);
-    if (cumMatch) {
-        result.cumSaleCount = parseInt(cumMatch[1]);
+    // 提取今年累计成交套数 - 多种匹配模式
+    const cumPatterns = [
+        /今年累计成交[\s\S]{0,200}?(\d+)套/,
+        /累计成交[\s\S]{0,200}?(\d+)套/,
+        /今年[\s\S]{0,100}?(\d+)套/
+    ];
+    for (const pattern of cumPatterns) {
+        const match = text.match(pattern);
+        if (match) {
+            result.cumSaleCount = parseInt(match[1]);
+            console.log(`  ✅ 匹配到累计成交套数: ${result.cumSaleCount} (模式: ${pattern})`);
+            break;
+        }
     }
     
-    // 提取今年累计成交面积（万㎡ -> ㎡）
-    const cumAreaMatch = text.match(/累计面积[\s\S]{0,100}?([\d.]+)万/);
-    if (cumAreaMatch) {
-        result.cumSaleArea = Math.round(parseFloat(cumAreaMatch[1]) * 10000);
+    // 提取今年累计成交面积 - 多种匹配模式
+    const cumAreaPatterns = [
+        /累计成交面积[\s\S]{0,200}?([\d.]+)万/,
+        /累计面积[\s\S]{0,200}?([\d.]+)万/,
+        /成交面积[\s\S]{0,200}?([\d.]+)万/,
+        /累计[\s\S]{0,100}?([\d.]+)万㎡/
+    ];
+    for (const pattern of cumAreaPatterns) {
+        const match = text.match(pattern);
+        if (match) {
+            result.cumSaleArea = Math.round(parseFloat(match[1]) * 10000);
+            console.log(`  ✅ 匹配到累计成交面积: ${result.cumSaleArea} ㎡ (原始: ${match[1]}万㎡)`);
+            break;
+        }
+    }
+    
+    // 调试：如果未提取到面积，输出页面文本前500字符
+    if (!result.yesterdaySaleArea) {
+        console.log(`  ⚠️ 未提取到昨日成交面积，页面文本前500字符:`);
+        console.log(text.substring(0, 500));
     }
     
     console.log(`  ✅ 昨日成交: ${result.yesterdaySaleCount || '未提取'} 套`);
     console.log(`  ✅ 昨日成交面积: ${result.yesterdaySaleArea || '未提取'} ㎡`);
     
     await closeTab();
+    
+    return result;
+}
+
+// ========== 新增：抓取楼市回顾 ==========
+async function fetchMarketReview() {
+    console.log('\n======= 抓取楼市回顾 =======\n');
+    
+    const result = {
+        date: new Date().toISOString().split('T')[0],
+        marketReview: null
+    };
+    
+    try {
+        // 1. 打开交易统计页面
+        console.log(`  [调试] 正在打开交易统计页面...`);
+        await createTab('https://www.fangdi.com.cn/trade/trade.html');
+        
+        // 2. 等待页面加载
+        await wait(3000);
+        
+        // 3. 提取楼市回顾（完整内容）
+        console.log(`  [调试] 正在提取楼市回顾...`);
+        
+        // 先提取页面文本，然后在Node.js中处理（避免CDP Proxy JS执行错误）
+        const pageText = await evalJS('document.body.innerText');
+        
+        console.log(`  [调试] 页面文本类型: ${typeof pageText}`);
+        if (pageText) {
+            console.log(`  [调试] 页面文本前100字符: ${pageText.substring(0, 100)}`);
+        }
+        
+        if (pageText && typeof pageText === 'string') {
+            const reviewIndex = pageText.indexOf('楼市回顾');
+            
+            if (reviewIndex > -1) {
+                console.log(`  [调试] 找到"楼市回顾"，位置: ${reviewIndex}`);
+                
+                // 跳过"楼市回顾"标题
+                const afterTitle = pageText.indexOf('\n', reviewIndex);
+                if (afterTitle > -1) {
+                    let reviewContent = pageText.substring(afterTitle).trim();
+                    
+                    console.log(`  [调试] 楼市回顾原始文本（前300字符）: ${reviewContent.substring(0, 300)}`);
+                    
+                    // 简单方法：直接按行分割，取前3行（包含"1."和"2."）
+                    const lines = reviewContent.split('\n');
+                    let resultLines = [];
+                    
+                    for (let i = 0; i < Math.min(lines.length, 10); i++) {
+                        const line = lines[i].trim();
+                        
+                        // 跳过空行和"今日楼市"这样的标题
+                        if (!line || line.includes('今日楼市') || line.includes('昨日楼市')) {
+                            continue;
+                        }
+                        
+                        // 如果遇到"17:00"这样的提示，停止
+                        if (line.includes('17:00')) {
+                            break;
+                        }
+                        
+                        resultLines.push(line);
+                        
+                        // 最多取5行
+                        if (resultLines.length >= 5) break;
+                    }
+                    
+                    console.log(`  [调试] 提取的行数: ${resultLines.length}`);
+                    console.log(`  [调试] 提取的内容: ${resultLines.join('\n')}`);
+                    
+                    if (resultLines.length > 0) {
+                        result.marketReview = resultLines.join('\n');
+                        console.log(`  ✅ 楼市回顾: ${result.marketReview}`);
+                    } else {
+                        console.log(`  ⚠️ 未找到楼市回顾内容`);
+                    }
+                } else {
+                    console.log(`  ⚠️ 未找到换行符`);
+                }
+            } else {
+                console.log(`  ⚠️ 未找到"楼市回顾"`);
+            }
+        } else {
+            console.log(`  ⚠️ 页面文本提取失败`);
+        }
+        
+        await closeTab();
+        
+    } catch (e) {
+        console.log(`  ❌ 抓取楼市回顾失败: ${e.message}`);
+    }
     
     return result;
 }
@@ -364,7 +517,8 @@ async function main() {
         date: date,
         newHouse: null,
         secondHand: null,
-        homePage: null
+        homePage: null,
+        marketReview: null  // 新增：楼市回顾
     };
     
     try {
@@ -374,22 +528,28 @@ async function main() {
         result.homePage = await fetchHomePageData();
         
         if (mode === 'newhouse' || mode === 'all') {
-            // 一手房数据从首页获取（当日签约数量）
-            if (result.homePage) {
+            // 从交易统计页面获取一手房成交数据
+            const newHouseData = await fetchNewHouseData();
+            if (newHouseData) {
+                result.newHouse = newHouseData;
+                console.log(`\n  ✅ 一手房数据已从trade页面提取`);
+                console.log(`  ✅ 成交套数: ${result.newHouse.todaySignUnits} 套`);
+                console.log(`  ✅ 成交面积: ${result.newHouse.todaySignArea} ㎡`);
+            }
+            
+            // 如果trade页面没有获取到，尝试从首页获取
+            if (!result.newHouse && result.homePage) {
                 result.newHouse = {
                     date: result.homePage.date,
                     todaySignUnits: result.homePage.todaySignUnits,
                     todaySignArea: result.homePage.todaySignArea,
                     availableUnits: result.homePage.newHouseAvailableUnits,
                     availableArea: result.homePage.newHouseAvailableArea,
-                    // 以下数据暂时为空，如果需要可以从trade页面提取
                     cumSaleUnits: null,
                     cumSaleArea: null,
                     newOpenUnits: null
                 };
-                console.log(`\n  ✅ 一手房数据已从首页提取`);
-                console.log(`  ✅ 签约套数: ${result.newHouse.todaySignUnits} 套`);
-                console.log(`  ✅ 签约面积: ${result.newHouse.todaySignArea} ㎡`);
+                console.log(`\n  ✅ 一手房数据已从首页提取（备用）`);
             }
         }
         
@@ -403,6 +563,14 @@ async function main() {
             }
             
             console.log(`\n  ✅ 二手房数据抓取完成`);
+        }
+        
+        // 新增：抓取楼市回顾（只在 secondhand 或 all 模式下运行）
+        if (mode === 'secondhand' || mode === 'all') {
+            const reviewData = await fetchMarketReview();
+            if (reviewData && reviewData.marketReview) {
+                result.marketReview = reviewData.marketReview;
+            }
         }
         
         // 保存数据
