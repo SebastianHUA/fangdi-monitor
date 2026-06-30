@@ -428,7 +428,7 @@
                             <td>${r.subscribeStart}</td>
                             <td>${r.subscribeEnd}</td>
                             <td>${r.units}</td>
-                            <td>${r.avgPrice.toLocaleString()}</td>
+                            <td>${r.avgPrice ? r.avgPrice.toLocaleString() : '--'}</td>
                         `;
                         tbody.appendChild(tr);
                     });
