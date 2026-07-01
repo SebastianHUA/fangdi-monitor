@@ -2,61 +2,53 @@
   {
     "date": "2026-06-27",
     "newHouse": {
-      "saleCount": 0,
-      "saleArea": 0,
-      "avgArea": 0,
+      "todaySignUnits": 0,
+      "todaySignArea": 0,
       "availableUnits": 0
     },
     "secondHand": {
-      "saleCount": 1352,
-      "saleArea": 105816.38,
-      "avgArea": 78.26,
-      "listingUnits": 299738
+      "yesterdaySaleCount": 1352,
+      "yesterdaySaleArea": 105816.38,
+      "listingCount": 299738
     }
   },
   {
     "date": "2026-06-28",
     "newHouse": {
-      "saleCount": 841,
-      "saleArea": 52031,
-      "avgArea": 61.87,
+      "todaySignUnits": 841,
+      "todaySignArea": 52031,
       "availableUnits": 59609
     },
     "secondHand": {
-      "saleCount": 1170,
-      "saleArea": 92679.71,
-      "avgArea": 79.21,
-      "listingUnits": 299139
+      "yesterdaySaleCount": 1170,
+      "yesterdaySaleArea": 92679.71,
+      "listingCount": 299139
     }
   },
   {
     "date": "2026-06-29",
     "newHouse": {
-      "saleCount": 1213,
-      "saleArea": 83637,
-      "avgArea": 68.95,
+      "todaySignUnits": 1213,
+      "todaySignArea": 83637,
       "availableUnits": 59693
     },
     "secondHand": {
-      "saleCount": 846,
-      "saleArea": 68888,
-      "avgArea": 81.43,
-      "listingUnits": 299166
+      "yesterdaySaleCount": 846,
+      "yesterdaySaleArea": 68888,
+      "listingCount": 299166
     }
   },
   {
     "date": "2026-06-30",
     "newHouse": {
-      "saleCount": 2393,
-      "saleArea": 147653,
-      "avgArea": 61.69,
+      "todaySignUnits": 2393,
+      "todaySignArea": 147653,
       "availableUnits": 59401
     },
     "secondHand": {
-      "saleCount": 772,
-      "saleArea": 66304,
-      "avgArea": 85.88,
-      "listingUnits": 297508
+      "yesterdaySaleCount": 772,
+      "yesterdaySaleArea": 66304,
+      "listingCount": 297508
     }
   }
 ]
