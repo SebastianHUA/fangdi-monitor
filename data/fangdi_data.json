@@ -1,28 +1,29 @@
 [
   {
-    "date": "2026-06-27",
+    "date": "2026-07-01",
     "newHouse": {
-      "todaySignUnits": 0,
+      "todaySignUnits": 668,
       "todaySignArea": 0,
-      "availableUnits": 0
+      "availableUnits": 34
     },
     "secondHand": {
-      "yesterdaySaleCount": 1352,
-      "yesterdaySaleArea": 105816.38,
-      "listingCount": 299738
-    }
+      "yesterdaySaleCount": 583,
+      "yesterdaySaleArea": 51165,
+      "listingCount": 297135
+    },
+    "marketReview": "1、今日新开房源共计2个开盘单元， 推出969套，面积62462.09平方米。其中位于郊环以外的0个，外郊环间的1个，中外环间的1个，内中环间的0个，内环以内的0个。\n2、今日共预/出售各类商品房668套，面积8.85万平方米。"
   },
   {
-    "date": "2026-06-28",
+    "date": "2026-06-30",
     "newHouse": {
-      "todaySignUnits": 841,
-      "todaySignArea": 52031,
-      "availableUnits": 59609
+      "todaySignUnits": 2393,
+      "todaySignArea": 147653,
+      "availableUnits": 59401
     },
     "secondHand": {
-      "yesterdaySaleCount": 1170,
-      "yesterdaySaleArea": 92679.71,
-      "listingCount": 299139
+      "yesterdaySaleCount": 772,
+      "yesterdaySaleArea": 66304,
+      "listingCount": 297508
     }
   },
   {
@@ -39,16 +40,29 @@
     }
   },
   {
-    "date": "2026-06-30",
+    "date": "2026-06-28",
     "newHouse": {
-      "todaySignUnits": 2393,
-      "todaySignArea": 147653,
-      "availableUnits": 59401
+      "todaySignUnits": 841,
+      "todaySignArea": 52031,
+      "availableUnits": 59609
     },
     "secondHand": {
-      "yesterdaySaleCount": 772,
-      "yesterdaySaleArea": 66304,
-      "listingCount": 297508
+      "yesterdaySaleCount": 1170,
+      "yesterdaySaleArea": 92679.71,
+      "listingCount": 299139
+    }
+  },
+  {
+    "date": "2026-06-27",
+    "newHouse": {
+      "todaySignUnits": 0,
+      "todaySignArea": 0,
+      "availableUnits": 0
+    },
+    "secondHand": {
+      "yesterdaySaleCount": 1352,
+      "yesterdaySaleArea": 105816.38,
+      "listingCount": 299738
     }
   }
 ]
