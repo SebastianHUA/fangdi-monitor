@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>上海房地产成交数据监测看板</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -202,10 +204,20 @@
         async function loadData() {
             try {
                 console.log('[看板] 开始加载数据...');
-                const response = await fetch('./data/fangdi_data.json?t=' + Date.now());
+                // 修正数据路径：从项目根目录加载（适配本地服务器和CloudStudio部署）
+                const dataUrl = window.location.pathname.includes('/dashboard/') 
+                    ? '../data/fangdi_data.json?t=' + Date.now()
+                    : './data/fangdi_data.json?t=' + Date.now();
+                const response = await fetch(dataUrl);
                 if (!response.ok) throw new Error('数据加载失败: ' + response.status);
                 allData = await response.json();
                 console.log('[看板] 数据加载成功:', allData);
+                
+                // 兼容处理：如果数据是单个对象（而非数组），自动转为数组
+                if (allData && !Array.isArray(allData)) {
+                    allData = [allData];
+                    console.log('[看板] 单条数据已自动转为数组');
+                }
                 
                 if (!allData || allData.length === 0) {
                     document.getElementById('updateInfo').textContent = '暂无数据';
@@ -446,8 +458,9 @@
             tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;">加载中...</td></tr>';
             
             try {
-                // 从单独的数据文件中读取认购公示
-                const response = await fetch('./data/subscription_data.json?t=' + Date.now());
+                // 动态计算数据文件路径（适配本地服务器和CloudStudio部署）
+                const basePath = window.location.pathname.includes('/dashboard/') ? '../' : './';
+                const response = await fetch(basePath + 'data/subscription_data.json?t=' + Date.now());
                 if (!response.ok) throw new Error('认购数据加载失败');
                 const data = await response.json();
                 const subscriptions = data.recentSubscriptions || [];
