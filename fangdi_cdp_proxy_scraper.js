@@ -573,12 +573,53 @@ async function main() {
             }
         }
         
-        // 保存数据
-        console.log('\n======= 保存数据 =======');
+        // 保存数据（数组格式，保留历史数据）
+        console.log("
+======== 保存数据 =========");
         
+        // 生成数组格式的数据文件（保留历史数据）
+        const dataFile = "data/fangdi_data.json";
+        let allData = [];
+        
+        // 读取现有数据
+        if (fs.existsSync(dataFile)) {
+            try {
+                const existingData = JSON.parse(fs.readFileSync(dataFile, "utf8"));
+                // 兼容处理：如果现有数据是单个对象，转为数组
+                if (Array.isArray(existingData)) {
+                    allData = existingData;
+                } else {
+                    allData = [existingData];
+                }
+            } catch (e) {
+                console.log("⚠️ 读取现有数据失败，创建新数组");
+                allData = [];
+            }
+        }
+        
+        // 检查是否已存在该日期的数据（避免重复）
+        const existingIndex = allData.findIndex(d => d.date === result.date);
+        if (existingIndex >= 0) {
+            // 更新现有数据
+            allData[existingIndex] = result;
+            console.log(`✅ 更新现有数据: ${result.date}`);
+        } else {
+            // 追加新数据
+            allData.push(result);
+            console.log(`✅ 追加新数据: ${result.date}`);
+        }
+        
+        // 按日期降序排序（最新的在前）
+        allData.sort((a, b) => b.date > a.date ? 1 : -1);
+        
+        // 保存到文件
+        fs.writeFileSync(dataFile, JSON.stringify(allData, null, 2), "utf8");
+        console.log(`✅ 数据已保存: ${dataFile} (共 ${allData.length} 条记录)`);
+        
+        // 同时保存带日期的文件（用于备份）
         const jsonFile = `fangdi_data_${date}.json`;
-        fs.writeFileSync(jsonFile, JSON.stringify(result, null, 2), 'utf8');
-        console.log(`✅ JSON 已保存: ${jsonFile}`);
+        fs.writeFileSync(jsonFile, JSON.stringify(result, null, 2), "utf8");
+        console.log(`✅ 备份已保存: ${jsonFile}`);
         
         // 生成日报
         const report = generateReport(result);
