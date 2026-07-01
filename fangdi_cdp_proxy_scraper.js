@@ -573,6 +573,21 @@ async function main() {
             }
         }
         
+        // 转换数据格式为看板期望的嵌套格式
+        const formattedResult = {
+            date: result.date,
+            newHouse: {
+                todaySignUnits: result.newHouse?.todaySignUnits ?? result.newHouse?.saleCount ?? 0,
+                todaySignArea: result.newHouse?.todaySignArea ?? result.newHouse?.saleArea ?? 0,
+                availableUnits: result.newHouse?.availableUnits ?? result.newHouse?.newHouseAvailableUnits ?? 0
+            },
+            secondHand: {
+                yesterdaySaleCount: result.secondHand?.yesterdaySaleCount ?? result.secondHand?.saleCount ?? 0,
+                yesterdaySaleArea: result.secondHand?.yesterdaySaleArea ?? result.secondHand?.saleArea ?? 0,
+                listingCount: result.secondHand?.listingCount ?? result.secondHand?.secondHandListingCount ?? 0
+            }
+        };
+        
         // 保存数据（数组格式，保留历史数据）
         console.log("
 ======== 保存数据 =========");
@@ -601,11 +616,11 @@ async function main() {
         const existingIndex = allData.findIndex(d => d.date === result.date);
         if (existingIndex >= 0) {
             // 更新现有数据
-            allData[existingIndex] = result;
+            allData[existingIndex] = formattedResult;
             console.log(`✅ 更新现有数据: ${result.date}`);
         } else {
             // 追加新数据
-            allData.push(result);
+            allData.push(formattedResult);
             console.log(`✅ 追加新数据: ${result.date}`);
         }
         
@@ -618,7 +633,7 @@ async function main() {
         
         // 同时保存带日期的文件（用于备份）
         const jsonFile = `fangdi_data_${date}.json`;
-        fs.writeFileSync(jsonFile, JSON.stringify(result, null, 2), "utf8");
+        fs.writeFileSync(jsonFile, JSON.stringify(formattedResult, null, 2), "utf8";
         console.log(`✅ 备份已保存: ${jsonFile}`);
         
         // 生成日报
