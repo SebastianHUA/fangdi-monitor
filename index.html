@@ -479,7 +479,7 @@
                 tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
                 
                 const filtered = subscriptions.filter(p => {
-                    const startDate = new Date(p.subscribeStart);
+                    const startDate = new Date(p['认购开始时间']);
                     return startDate >= tenDaysAgo && startDate <= today;
                 });
                 
@@ -490,7 +490,7 @@
                 
                 // 按开始日期倒序排列（最新的在前）
                 filtered.sort((a, b) => {
-                    return new Date(b.subscribeStart) - new Date(a.subscribeStart);
+                    return new Date(b['认购开始时间']) - new Date(a['认购开始时间']);
                 });
                 
                 filtered.forEach(p => {
@@ -499,8 +499,8 @@
                     // 判断状态
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
-                    const startDate = new Date(p.subscribeStart);
-                    const endDate = new Date(p.subscribeEnd);
+                    const startDate = new Date(p['认购开始时间']);
+                    const endDate = new Date(p['认购结束时间']);
                     let status = '';
                     let statusClass = '';
                     if (today < startDate) {
@@ -515,14 +515,14 @@
                     }
                     
                     tr.innerHTML = `
-                        <td>${p.district || '-'}</td>
-                        <td>${p.projectName || '-'}</td>
-                        <td>${p.company || '-'}</td>
-                        <td>${p.subscribeStart || '-'}</td>
-                        <td>${p.subscribeEnd || '-'}</td>
-                        <td>${p.units ? p.units.toLocaleString() : '-'}</td>
-                        <td>${p.area ? p.area.toLocaleString() : '-'}</td>
-                        <td>${p.avgPrice ? p.avgPrice.toLocaleString() : '-'}</td>
+                        <td>${p['所在区'] || '-'}</td>
+                        <td>${p['项目名称'] || '-'}</td>
+                        <td>${p['开发企业'] || '-'}</td>
+                        <td>${p['认购开始时间'] || '-'}</td>
+                        <td>${p['认购结束时间'] || '-'}</td>
+                        <td>${p['套数'] ? p['套数'].toLocaleString() : '-'}</td>
+                        <td>${p['上市面积'] ? p['上市面积'].toLocaleString() : '-'}</td>
+                        <td>${p['备案均价'] ? p['备案均价'].toLocaleString() : '-'}</td>
                         <td><span class="${statusClass}">${status}</span></td>
                     `;
                     tbody.appendChild(tr);
