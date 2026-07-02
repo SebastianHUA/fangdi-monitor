@@ -738,31 +738,7 @@
       "认购结束时间": "2026-07-06",
       "认购联系电话": "39818666",
       "区局监督电话": "59722270"
-    },
-    {
-      "date": "2026-07-02",
-      "district": "浦东新区",
-      "projectName": "测试楼盘1",
-      "company": "测试公司1",
-      "subscribeStart": "2026-07-01",
-      "subscribeEnd": "2026-07-05",
-      "subscribeRatio": "2",
-      "units": 100,
-      "area": 12000,
-      "avgPrice": 70000
-    },
-    {
-      "date": "2026-07-02",
-      "district": "杨浦区",
-      "projectName": "测试楼盘2",
-      "company": "测试公司2",
-      "subscribeStart": "2026-07-02",
-      "subscribeEnd": "2026-07-06",
-      "subscribeRatio": "2.5",
-      "units": 80,
-      "area": 10000,
-      "avgPrice": 120000
     }
   ],
-  "updateTime": "2026-07-03T00:07:11.149250"
+  "updateTime": "2026-07-03T07:24:00.000000"
 }
