@@ -38,5 +38,31 @@
       "yesterdaySaleArea": 68888,
       "listingCount": 299166
     }
+  },
+  {
+    "date": "2026-06-28",
+    "newHouse": {
+      "todaySignUnits": 841,
+      "todaySignArea": 52031,
+      "availableUnits": 59609
+    },
+    "secondHand": {
+      "yesterdaySaleCount": 1170,
+      "yesterdaySaleArea": 92679.71,
+      "listingCount": 299139
+    }
+  },
+  {
+    "date": "2026-06-27",
+    "newHouse": {
+      "todaySignUnits": 0,
+      "todaySignArea": 0,
+      "availableUnits": 0
+    },
+    "secondHand": {
+      "yesterdaySaleCount": 1352,
+      "yesterdaySaleArea": 105816.38,
+      "listingCount": 299738
+    }
   }
 ]
