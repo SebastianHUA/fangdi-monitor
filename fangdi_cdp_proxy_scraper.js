@@ -589,8 +589,7 @@ async function main() {
         };
         
         // 保存数据（数组格式，保留历史数据）
-        console.log("
-======== 保存数据 =========");
+        console.log("======== 保存数据 =========");
         
         // 生成数组格式的数据文件（保留历史数据）
         const dataFile = "data/fangdi_data.json";
@@ -633,7 +632,7 @@ async function main() {
         
         // 同时保存带日期的文件（用于备份）
         const jsonFile = `fangdi_data_${date}.json`;
-        fs.writeFileSync(jsonFile, JSON.stringify(formattedResult, null, 2), "utf8";
+        fs.writeFileSync(jsonFile, JSON.stringify(formattedResult, null, 2), "utf8");
         console.log(`✅ 备份已保存: ${jsonFile}`);
         
         // 生成日报
