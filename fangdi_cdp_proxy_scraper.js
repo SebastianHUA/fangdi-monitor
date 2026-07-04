@@ -11,6 +11,9 @@ const fs = require('fs');
 const CDP_PROXY = 'http://127.0.0.1:3456';
 let targetId = null;
 
+// 测试模式（不保存数据）
+let TEST_MODE = false;
+
 // 命令行参数解析
 const args = process.argv.slice(2);
 let mode = 'all';
@@ -21,6 +24,11 @@ if (args.includes('--mode=newhouse')) {
     mode = 'secondhand';
 } else if (args.includes('--mode=all')) {
     mode = 'all';
+}
+
+if (args.includes('--test')) {
+    TEST_MODE = true;
+    console.log(`[配置] ⚠️ 测试模式已启用 - 不保存数据`);
 }
 
 console.log(`[配置] 运行模式: ${mode}`);
@@ -535,17 +543,8 @@ async function main() {
         result.homePage = await fetchHomePageData();
         
         if (mode === 'newhouse' || mode === 'all') {
-            // 从交易统计页面获取一手房成交数据
-            const newHouseData = await fetchNewHouseData();
-            if (newHouseData) {
-                result.newHouse = newHouseData;
-                console.log(`\n  ✅ 一手房数据已从trade页面提取`);
-                console.log(`  ✅ 成交套数: ${result.newHouse.todaySignUnits} 套`);
-                console.log(`  ✅ 成交面积: ${result.newHouse.todaySignArea} ㎡`);
-            }
-            
-            // 如果trade页面没有获取到，尝试从首页获取
-            if (!result.newHouse && result.homePage) {
+            // 【修复】优先使用首页数据（更准确，因为trade页面是动态渲染）
+            if (result.homePage) {
                 result.newHouse = {
                     date: result.homePage.date,
                     todaySignUnits: result.homePage.todaySignUnits,
@@ -556,7 +555,20 @@ async function main() {
                     cumSaleArea: null,
                     newOpenUnits: null
                 };
-                console.log(`\n  ✅ 一手房数据已从首页提取（备用）`);
+                console.log(`\n  ✅ 一手房数据已从首页提取`);
+                console.log(`  ✅ 成交套数: ${result.newHouse.todaySignUnits} 套`);
+                console.log(`  ✅ 成交面积: ${result.newHouse.todaySignArea} ㎡`);
+            }
+            
+            // 如果首页没有获取到，尝试从trade页面获取（备用）
+            if (!result.newHouse) {
+                const newHouseData = await fetchNewHouseData();
+                if (newHouseData) {
+                    result.newHouse = newHouseData;
+                    console.log(`\n  ✅ 一手房数据已从trade页面提取（备用）`);
+                    console.log(`  ✅ 成交套数: ${result.newHouse.todaySignUnits} 套`);
+                    console.log(`  ✅ 成交面积: ${result.newHouse.todaySignArea} ㎡`);
+                }
             }
         }
         
@@ -595,58 +607,68 @@ async function main() {
             }
         };
         
-        // 保存数据（数组格式，保留历史数据）
-        console.log("======== 保存数据 =========");
-        
-        // 生成数组格式的数据文件（保留历史数据）
-        const dataFile = "data/fangdi_data.json";
-        let allData = [];
-        
-        // 读取现有数据
-        if (fs.existsSync(dataFile)) {
-            try {
-                const existingData = JSON.parse(fs.readFileSync(dataFile, "utf8"));
-                // 兼容处理：如果现有数据是单个对象，转为数组
-                if (Array.isArray(existingData)) {
-                    allData = existingData;
-                } else {
-                    allData = [existingData];
-                }
-            } catch (e) {
-                console.log("⚠️ 读取现有数据失败，创建新数组");
-                allData = [];
-            }
-        }
-        
-        // 检查是否已存在该日期的数据（避免重复）
-        const existingIndex = allData.findIndex(d => d.date === result.date);
-        if (existingIndex >= 0) {
-            // 更新现有数据
-            allData[existingIndex] = formattedResult;
-            console.log(`✅ 更新现有数据: ${result.date}`);
-        } else {
-            // 追加新数据
-            allData.push(formattedResult);
-            console.log(`✅ 追加新数据: ${result.date}`);
-        }
-        
-        // 按日期降序排序（最新的在前）
-        allData.sort((a, b) => b.date > a.date ? 1 : -1);
-        
-        // 保存到文件
-        fs.writeFileSync(dataFile, JSON.stringify(allData, null, 2), "utf8");
-        console.log(`✅ 数据已保存: ${dataFile} (共 ${allData.length} 条记录)`);
-        
-        // 同时保存带日期的文件（用于备份）
-        const jsonFile = `fangdi_data_${date}.json`;
-        fs.writeFileSync(jsonFile, JSON.stringify(formattedResult, null, 2), "utf8");
-        console.log(`✅ 备份已保存: ${jsonFile}`);
-        
-        // 生成日报
+        // 生成日报（测试模式和正常模式都生成）
         const report = generateReport(result);
-        const reportFile = `fangdi_daily_report_${date}.md`;
-        fs.writeFileSync(reportFile, report, 'utf8');
-        console.log(`✅ 日报已保存: ${reportFile}`);
+        
+        // 保存数据（数组格式，保留历史数据）
+        if (!TEST_MODE) {
+            console.log("======== 保存数据 =========");
+            
+            // 生成数组格式的数据文件（保留历史数据）
+            const dataFile = "data/fangdi_data.json";
+            let allData = [];
+            
+            // 读取现有数据
+            if (fs.existsSync(dataFile)) {
+                try {
+                    const existingData = JSON.parse(fs.readFileSync(dataFile, "utf8"));
+                    // 兼容处理：如果现有数据是单个对象，转为数组
+                    if (Array.isArray(existingData)) {
+                        allData = existingData;
+                    } else {
+                        allData = [existingData];
+                    }
+                } catch (e) {
+                    console.log("⚠️ 读取现有数据失败，创建新数组");
+                    allData = [];
+                }
+            }
+            
+            // 检查是否已存在该日期的数据（避免重复）
+            const existingIndex = allData.findIndex(d => d.date === result.date);
+            if (existingIndex >= 0) {
+                // 更新现有数据
+                allData[existingIndex] = formattedResult;
+                console.log(`✅ 更新现有数据: ${result.date}`);
+            } else {
+                // 追加新数据
+                allData.push(formattedResult);
+                console.log(`✅ 追加新数据: ${result.date}`);
+            }
+            
+            // 按日期降序排序（最新的在前）
+            allData.sort((a, b) => b.date > a.date ? 1 : -1);
+            
+            // 保存到文件
+            fs.writeFileSync(dataFile, JSON.stringify(allData, null, 2), "utf8");
+            console.log(`✅ 数据已保存: ${dataFile} (共 ${allData.length} 条记录)`);
+            
+            // 同时保存带日期的文件（用于备份）
+            const jsonFile = `data/fangdi_data_${date}.json`;
+            fs.writeFileSync(jsonFile, JSON.stringify(formattedResult, null, 2), "utf8");
+            console.log(`✅ 备份已保存: ${jsonFile}`);
+            
+            // 保存日报
+            const reportFile = `data/fangdi_daily_report_${date}.md`;
+            fs.writeFileSync(reportFile, report, 'utf8');
+            console.log(`✅ 日报已保存: ${reportFile}`);
+        } else {
+            console.log("\n⚠️ 测试模式 - 不保存数据");
+            console.log("模拟保存:");
+            console.log(`  - 数据文件: data/fangdi_data.json`);
+            console.log(`  - 备份文件: data/fangdi_data_${date}.json`);
+            console.log(`  - 日报文件: data/fangdi_daily_report_${date}.md`);
+        }
         
         console.log('\n======= ✅ 抓取完成 =======');
         console.log('\n📄 日报预览:');
