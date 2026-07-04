@@ -512,7 +512,14 @@ async function fetchMarketReview() {
 async function main() {
     console.log('======= 上海房地产数据监测系统 =======\n');
     
-    const date = new Date().toISOString().split('T')[0];
+    // 支持 --date 参数（格式：--date=2026-07-03）
+    let date = new Date().toISOString().split('T')[0];
+    const dateArg = args.find(arg => arg.startsWith('--date='));
+    if (dateArg) {
+        date = dateArg.split('=')[1];
+        console.log(`[配置] 使用指定日期: ${date}`);
+    }
+    
     const result = {
         date: date,
         newHouse: null,
