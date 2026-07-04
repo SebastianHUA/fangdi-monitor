@@ -195,7 +195,15 @@
         // 获取数据日期（直接从最新数据中获取）
         function getDataDate() {
             if (allData && allData.length > 0) {
-                return allData[0].date;  // 最新数据的日期
+                // 查找最新完整的数据（跳过不完整数据）
+                for (let i = 0; i < allData.length; i++) {
+                    const d = allData[i];
+                    const hasNewHouse = (d.newHouse?.todaySignUnits ?? 0) > 0;
+                    const hasSecondHand = (d.secondHand?.yesterdaySaleCount ?? 0) > 0;
+                    if (hasNewHouse || hasSecondHand) {
+                        return d.date;
+                    }
+                }
             }
             return '未知';
         }
@@ -246,8 +254,20 @@
 
         // 更新看板
         function updateDashboard() {
-            const latest = allData[0];
-            const prev = allData[1];
+            // 查找最新完整的数据（跳过不完整数据）
+            let latestIndex = 0;
+            for (let i = 0; i < allData.length; i++) {
+                const d = allData[i];
+                const hasNewHouse = (d.newHouse?.todaySignUnits ?? 0) > 0;
+                const hasSecondHand = (d.secondHand?.yesterdaySaleCount ?? 0) > 0;
+                if (hasNewHouse || hasSecondHand) {
+                    latestIndex = i;
+                    break;
+                }
+            }
+            
+            const latest = allData[latestIndex];
+            const prev = allData[latestIndex + 1];
             
             // 更新数据日期（T-1日）
             const dataDate = getDataDate();
