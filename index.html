@@ -246,8 +246,21 @@
 
         // 更新看板
         function updateDashboard() {
-            const latest = allData[0];
-            const prev = allData[1];
+            // 查找最近完整的数据（跳过当天不完整数据）
+            let latestIndex = 0;
+            for (let i = 0; i < allData.length; i++) {
+                const d = allData[i];
+                // 判断是否是完整数据：一手房和二手房都有数据
+                const hasNewHouse = (d.newHouse?.todaySignUnits ?? 0) > 0;
+                const hasSecondHand = (d.secondHand?.yesterdaySaleCount ?? 0) > 0;
+                if (hasNewHouse || hasSecondHand) {
+                    latestIndex = i;
+                    break;
+                }
+            }
+            
+            const latest = allData[latestIndex];
+            const prev = allData[latestIndex + 1];
             
             // 更新数据日期（T-1日）
             const dataDate = getDataDate();
