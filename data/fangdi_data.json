@@ -2,9 +2,9 @@
   {
     "date": "2026-07-05",
     "newHouse": {
-      "todaySignUnits": 0,
-      "todaySignArea": 0,
-      "availableUnits": 0
+      "todaySignUnits": 437,
+      "todaySignArea": 25600,
+      "availableUnits": 59759
     },
     "secondHand": {
       "yesterdaySaleCount": 1004,
