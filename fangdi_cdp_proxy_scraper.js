@@ -637,8 +637,11 @@ async function main() {
             // 检查是否已存在该日期的数据（避免重复）
             const existingIndex = allData.findIndex(d => d.date === result.date);
             if (existingIndex >= 0) {
-                // 更新现有数据
-                allData[existingIndex] = formattedResult;
+                // 【修复】合并数据，而不是整体替换
+                allData[existingIndex] = {
+                    ...allData[existingIndex],  // 保留现有数据
+                    ...formattedResult           // 用新数据覆盖
+                };
                 console.log(`✅ 更新现有数据: ${result.date}`);
             } else {
                 // 追加新数据
