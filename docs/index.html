@@ -201,7 +201,7 @@
                     const d = allData[i];
                     const hasNewHouse = (d.newHouse?.todaySignUnits ?? 0) > 0;
                     const hasSecondHand = (d.secondHand?.yesterdaySaleCount ?? 0) > 0;
-                    if (hasNewHouse || hasSecondHand) {
+                    if (hasNewHouse && hasSecondHand) {  // ✅ 完整数据（一手房+二手房都>0）
                         return d.date;
                     }
                 }
@@ -261,7 +261,7 @@
                 const d = allData[i];
                 const hasNewHouse = (d.newHouse?.todaySignUnits ?? 0) > 0;
                 const hasSecondHand = (d.secondHand?.yesterdaySaleCount ?? 0) > 0;
-                if (hasNewHouse || hasSecondHand) {
+                if (hasNewHouse && hasSecondHand) {  // ✅ 完整数据（一手房+二手房都>0）
                     latestIndex = i;
                     break;
                 }
