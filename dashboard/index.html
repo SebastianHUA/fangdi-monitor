@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+<!-- v2: force refresh 1783311856900 -->
     <meta charset="UTF-8">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
@@ -195,7 +196,15 @@
         // 获取数据日期（直接从最新数据中获取）
         function getDataDate() {
             if (allData && allData.length > 0) {
-                return allData[0].date;  // 最新数据的日期
+                // 查找最新完整的数据（跳过不完整数据）
+                for (let i = 0; i < allData.length; i++) {
+                    const d = allData[i];
+                    const hasNewHouse = (d.newHouse?.todaySignUnits ?? 0) > 0;
+                    const hasSecondHand = (d.secondHand?.yesterdaySaleCount ?? 0) > 0;
+                    if (hasNewHouse || hasSecondHand) {
+                        return d.date;
+                    }
+                }
             }
             return '未知';
         }
@@ -246,8 +255,20 @@
 
         // 更新看板
         function updateDashboard() {
-            const latest = allData[0];
-            const prev = allData[1];
+            // 查找最新完整的数据（跳过不完整数据）
+            let latestIndex = 0;
+            for (let i = 0; i < allData.length; i++) {
+                const d = allData[i];
+                const hasNewHouse = (d.newHouse?.todaySignUnits ?? 0) > 0;
+                const hasSecondHand = (d.secondHand?.yesterdaySaleCount ?? 0) > 0;
+                if (hasNewHouse || hasSecondHand) {
+                    latestIndex = i;
+                    break;
+                }
+            }
+            
+            const latest = allData[latestIndex];
+            const prev = allData[latestIndex + 1];
             
             // 更新数据日期（T-1日）
             const dataDate = getDataDate();
@@ -479,7 +500,7 @@
                 tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
                 
                 const filtered = subscriptions.filter(p => {
-                    const startDate = new Date(p.subscribeStart);
+                    const startDate = new Date(p['认购开始时间']);
                     return startDate >= tenDaysAgo && startDate <= today;
                 });
                 
@@ -490,7 +511,7 @@
                 
                 // 按开始日期倒序排列（最新的在前）
                 filtered.sort((a, b) => {
-                    return new Date(b.subscribeStart) - new Date(a.subscribeStart);
+                    return new Date(b['认购开始时间']) - new Date(a['认购开始时间']);
                 });
                 
                 filtered.forEach(p => {
@@ -499,8 +520,8 @@
                     // 判断状态
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
-                    const startDate = new Date(p.subscribeStart);
-                    const endDate = new Date(p.subscribeEnd);
+                    const startDate = new Date(p['认购开始时间']);
+                    const endDate = new Date(p['认购结束时间']);
                     let status = '';
                     let statusClass = '';
                     if (today < startDate) {
@@ -515,14 +536,14 @@
                     }
                     
                     tr.innerHTML = `
-                        <td>${p.district || '-'}</td>
-                        <td>${p.projectName || '-'}</td>
-                        <td>${p.company || '-'}</td>
-                        <td>${p.subscribeStart || '-'}</td>
-                        <td>${p.subscribeEnd || '-'}</td>
-                        <td>${p.units ? p.units.toLocaleString() : '-'}</td>
-                        <td>${p.area ? p.area.toLocaleString() : '-'}</td>
-                        <td>${p.avgPrice ? p.avgPrice.toLocaleString() : '-'}</td>
+                        <td>${p['所在区'] || '-'}</td>
+                        <td>${p['项目名称'] || '-'}</td>
+                        <td>${p['开发企业'] || '-'}</td>
+                        <td>${p['认购开始时间'] || '-'}</td>
+                        <td>${p['认购结束时间'] || '-'}</td>
+                        <td>${p['套数'] ? p['套数'].toLocaleString() : '-'}</td>
+                        <td>${p['上市面积'] ? p['上市面积'].toLocaleString() : '-'}</td>
+                        <td>${p['备案均价'] ? p['备案均价'].toLocaleString() : '-'}</td>
                         <td><span class="${statusClass}">${status}</span></td>
                     `;
                     tbody.appendChild(tr);
