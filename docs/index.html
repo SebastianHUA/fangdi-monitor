@@ -1,8 +1,11 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+<!-- v2: force refresh 1783311856900 -->
     <meta charset="UTF-8">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>上海房地产成交数据监测看板</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -193,7 +196,15 @@
         // 获取数据日期（直接从最新数据中获取）
         function getDataDate() {
             if (allData && allData.length > 0) {
-                return allData[0].date;  // 最新数据的日期
+                // 查找最新完整的数据（跳过不完整数据）
+                for (let i = 0; i < allData.length; i++) {
+                    const d = allData[i];
+                    const hasNewHouse = (d.newHouse?.todaySignUnits ?? 0) > 0;
+                    const hasSecondHand = (d.secondHand?.yesterdaySaleCount ?? 0) > 0;
+                    if (hasNewHouse || hasSecondHand) {
+                        return d.date;
+                    }
+                }
             }
             return '未知';
         }
@@ -202,10 +213,20 @@
         async function loadData() {
             try {
                 console.log('[看板] 开始加载数据...');
-                const response = await fetch('./data/fangdi_data.json?t=' + Date.now());
+                // 修正数据路径：从项目根目录加载（适配本地服务器和CloudStudio部署）
+                const dataUrl = window.location.pathname.includes('/dashboard/') 
+                    ? '../data/fangdi_data.json?t=' + Date.now()
+                    : './data/fangdi_data.json?t=' + Date.now();
+                const response = await fetch(dataUrl);
                 if (!response.ok) throw new Error('数据加载失败: ' + response.status);
                 allData = await response.json();
                 console.log('[看板] 数据加载成功:', allData);
+                
+                // 兼容处理：如果数据是单个对象（而非数组），自动转为数组
+                if (allData && !Array.isArray(allData)) {
+                    allData = [allData];
+                    console.log('[看板] 单条数据已自动转为数组');
+                }
                 
                 if (!allData || allData.length === 0) {
                     document.getElementById('updateInfo').textContent = '暂无数据';
@@ -234,8 +255,20 @@
 
         // 更新看板
         function updateDashboard() {
-            const latest = allData[0];
-            const prev = allData[1];
+            // 查找最新完整的数据（跳过不完整数据）
+            let latestIndex = 0;
+            for (let i = 0; i < allData.length; i++) {
+                const d = allData[i];
+                const hasNewHouse = (d.newHouse?.todaySignUnits ?? 0) > 0;
+                const hasSecondHand = (d.secondHand?.yesterdaySaleCount ?? 0) > 0;
+                if (hasNewHouse || hasSecondHand) {
+                    latestIndex = i;
+                    break;
+                }
+            }
+            
+            const latest = allData[latestIndex];
+            const prev = allData[latestIndex + 1];
             
             // 更新数据日期（T-1日）
             const dataDate = getDataDate();
@@ -446,8 +479,9 @@
             tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;">加载中...</td></tr>';
             
             try {
-                // 从单独的数据文件中读取认购公示
-                const response = await fetch('./data/subscription_data.json?t=' + Date.now());
+                // 动态计算数据文件路径（适配本地服务器和CloudStudio部署）
+                const basePath = window.location.pathname.includes('/dashboard/') ? '../' : './';
+                const response = await fetch(basePath + 'data/subscription_data.json?t=' + Date.now());
                 if (!response.ok) throw new Error('认购数据加载失败');
                 const data = await response.json();
                 const subscriptions = data.recentSubscriptions || [];
@@ -466,7 +500,7 @@
                 tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
                 
                 const filtered = subscriptions.filter(p => {
-                    const startDate = new Date(p.subscribeStart);
+                    const startDate = new Date(p['认购开始时间']);
                     return startDate >= tenDaysAgo && startDate <= today;
                 });
                 
@@ -477,7 +511,7 @@
                 
                 // 按开始日期倒序排列（最新的在前）
                 filtered.sort((a, b) => {
-                    return new Date(b.subscribeStart) - new Date(a.subscribeStart);
+                    return new Date(b['认购开始时间']) - new Date(a['认购开始时间']);
                 });
                 
                 filtered.forEach(p => {
@@ -486,8 +520,8 @@
                     // 判断状态
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
-                    const startDate = new Date(p.subscribeStart);
-                    const endDate = new Date(p.subscribeEnd);
+                    const startDate = new Date(p['认购开始时间']);
+                    const endDate = new Date(p['认购结束时间']);
                     let status = '';
                     let statusClass = '';
                     if (today < startDate) {
@@ -502,14 +536,14 @@
                     }
                     
                     tr.innerHTML = `
-                        <td>${p.district || '-'}</td>
-                        <td>${p.projectName || '-'}</td>
-                        <td>${p.company || '-'}</td>
-                        <td>${p.subscribeStart || '-'}</td>
-                        <td>${p.subscribeEnd || '-'}</td>
-                        <td>${p.units ? p.units.toLocaleString() : '-'}</td>
-                        <td>${p.area ? p.area.toLocaleString() : '-'}</td>
-                        <td>${p.avgPrice ? p.avgPrice.toLocaleString() : '-'}</td>
+                        <td>${p['所在区'] || '-'}</td>
+                        <td>${p['项目名称'] || '-'}</td>
+                        <td>${p['开发企业'] || '-'}</td>
+                        <td>${p['认购开始时间'] || '-'}</td>
+                        <td>${p['认购结束时间'] || '-'}</td>
+                        <td>${p['套数'] ? p['套数'].toLocaleString() : '-'}</td>
+                        <td>${p['上市面积'] ? p['上市面积'].toLocaleString() : '-'}</td>
+                        <td>${p['备案均价'] ? p['备案均价'].toLocaleString() : '-'}</td>
                         <td><span class="${statusClass}">${status}</span></td>
                     `;
                     tbody.appendChild(tr);
