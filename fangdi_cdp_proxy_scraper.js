@@ -593,19 +593,28 @@ async function main() {
         }
         
         // 转换数据格式为看板期望的嵌套格式
+        // 【修复】只添加实际抓取到的数据，避免覆盖其他字段
         const formattedResult = {
-            date: result.date,
-            newHouse: {
+            date: result.date
+        };
+        
+        // 只有在抓取了一手房数据时才添加 newHouse 字段
+        if (result.newHouse && (result.newHouse.todaySignUnits !== undefined || result.newHouse.availableUnits !== undefined)) {
+            formattedResult.newHouse = {
                 todaySignUnits: result.newHouse?.todaySignUnits ?? result.newHouse?.saleCount ?? 0,
                 todaySignArea: result.newHouse?.todaySignArea ?? result.newHouse?.saleArea ?? 0,
                 availableUnits: result.newHouse?.availableUnits ?? result.newHouse?.newHouseAvailableUnits ?? 0
-            },
-            secondHand: {
+            };
+        }
+        
+        // 只有在抓取了二手房数据时才添加 secondHand 字段
+        if (result.secondHand && (result.secondHand.yesterdaySaleCount !== undefined || result.secondHand.listingCount !== undefined)) {
+            formattedResult.secondHand = {
                 yesterdaySaleCount: result.secondHand?.yesterdaySaleCount ?? result.secondHand?.saleCount ?? 0,
                 yesterdaySaleArea: result.secondHand?.yesterdaySaleArea ?? result.secondHand?.saleArea ?? 0,
                 listingCount: result.secondHand?.listingCount ?? result.secondHand?.secondHandListingCount ?? 0
-            }
-        };
+            };
+        }
         
         // 生成日报（测试模式和正常模式都生成）
         const report = generateReport(result);
