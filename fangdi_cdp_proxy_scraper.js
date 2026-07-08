@@ -307,6 +307,39 @@ async function fetchNewHouseData() {
         console.log(`  ✅ 可售套数: ${result.availableUnits} 套`);
     }
     
+    // 🆕 提取楼市回顾（从首页，比 trade.html 更稳定）
+    try {
+        const reviewIndex = text.indexOf('楼市回顾');
+        if (reviewIndex > -1) {
+            console.log(`  [调试] 首页找到"楼市回顾"，位置: ${reviewIndex}`);
+            const afterTitle = text.indexOf('\n', reviewIndex);
+            if (afterTitle > -1) {
+                let reviewContent = text.substring(afterTitle).trim();
+                const lines = reviewContent.split('\n');
+                let resultLines = [];
+                
+                for (let i = 0; i < Math.min(lines.length, 10); i++) {
+                    const line = lines[i].trim();
+                    if (!line || line.includes('今日楼市') || line.includes('昨日楼市')) continue;
+                    if (line.includes('17:00')) break;
+                    resultLines.push(line);
+                    if (resultLines.length >= 5) break;
+                }
+                
+                if (resultLines.length > 0) {
+                    result.marketReview = resultLines.join('\n');
+                    console.log(`  ✅ 楼市回顾（首页）: ${result.marketReview.substring(0, 80)}...`);
+                } else {
+                    console.log(`  ⚠️ 首页未找到楼市回顾内容`);
+                }
+            }
+        } else {
+            console.log(`  ⚠️ 首页未找到"楼市回顾"区块`);
+        }
+    } catch (e) {
+        console.log(`  ⚠️ 提取楼市回顾异常: ${e.message}`);
+    }
+    
     await closeTab();
     
     return result;
@@ -438,79 +471,97 @@ async function fetchMarketReview() {
         console.log(`  [调试] 正在打开交易统计页面...`);
         await createTab('https://www.fangdi.com.cn/trade/trade.html');
         
-        // 2. 等待页面加载
-        await wait(3000);
+        // 2. 等待页面加载（增加到5秒，确保动态内容渲染完毕）
+        await wait(5000);
         
-        // 3. 提取楼市回顾（完整内容）
+        // 3. 提取楼市回顾（带重试）
         console.log(`  [调试] 正在提取楼市回顾...`);
         
-        // 先提取页面文本，然后在Node.js中处理（避免CDP Proxy JS执行错误）
-        const pageText = await evalJS('document.body.innerText');
-        
-        console.log(`  [调试] 页面文本类型: ${typeof pageText}`);
-        if (pageText) {
-            console.log(`  [调试] 页面文本前100字符: ${pageText.substring(0, 100)}`);
-        }
-        
-        if (pageText && typeof pageText === 'string') {
-            const reviewIndex = pageText.indexOf('楼市回顾');
+        for (let attempt = 0; attempt < 3; attempt++) {
+            if (attempt > 0) {
+                console.log(`  [重试] 第${attempt + 1}次尝试...`);
+                await wait(3000); // 额外等待3秒
+            }
+            
+            const pageText = await evalJS('document.body.innerText');
+            
+            if (!pageText || typeof pageText !== 'string') {
+                console.log(`  ⚠️ 第${attempt + 1}次：页面文本提取失败`);
+                continue;
+            }
+            
+            // 方法1：精确匹配"楼市回顾"
+            let reviewIndex = pageText.indexOf('楼市回顾');
+            
+            // 方法2：如果indexOf失败，尝试正则匹配（兼容可能的编码问题）
+            if (reviewIndex === -1) {
+                const regexMatch = pageText.match(/今日新开房源共计(\d+)个开盘单元/);
+                if (regexMatch) {
+                    // 从匹配位置往前找，提取完整内容
+                    const matchPos = pageText.indexOf('今日新开房源共计');
+                    // 尝试提取从"今日楼市"开始到"17:00"之间的内容
+                    const todayReviewIdx = pageText.indexOf('今日楼市');
+                    if (todayReviewIdx > -1 && todayReviewIdx < matchPos) {
+                        reviewIndex = todayReviewIdx;
+                        console.log(`  [备用] 通过"今日楼市"定位，位置: ${reviewIndex}`);
+                    }
+                }
+            }
             
             if (reviewIndex > -1) {
-                console.log(`  [调试] 找到"楼市回顾"，位置: ${reviewIndex}`);
+                console.log(`  [调试] 找到楼市回顾内容，位置: ${reviewIndex}`);
                 
-                // 跳过"楼市回顾"标题
-                const afterTitle = pageText.indexOf('\n', reviewIndex);
-                if (afterTitle > -1) {
-                    let reviewContent = pageText.substring(afterTitle).trim();
+                let reviewContent = pageText.substring(reviewIndex).trim();
+                
+                console.log(`  [调试] 楼市回顾原始文本（前300字符）: ${reviewContent.substring(0, 300)}`);
+                
+                // 按行分割，提取楼市回顾的行
+                const lines = reviewContent.split('\n');
+                let resultLines = [];
+                
+                for (let i = 0; i < Math.min(lines.length, 10); i++) {
+                    const line = lines[i].trim();
                     
-                    console.log(`  [调试] 楼市回顾原始文本（前300字符）: ${reviewContent.substring(0, 300)}`);
-                    
-                    // 简单方法：直接按行分割，取前3行（包含"1."和"2."）
-                    const lines = reviewContent.split('\n');
-                    let resultLines = [];
-                    
-                    for (let i = 0; i < Math.min(lines.length, 10); i++) {
-                        const line = lines[i].trim();
-                        
-                        // 跳过空行和"今日楼市"这样的标题
-                        if (!line || line.includes('今日楼市') || line.includes('昨日楼市')) {
-                            continue;
-                        }
-                        
-                        // 如果遇到"17:00"这样的提示，停止
-                        if (line.includes('17:00')) {
-                            break;
-                        }
-                        
-                        resultLines.push(line);
-                        
-                        // 最多取5行
-                        if (resultLines.length >= 5) break;
+                    // 跳过空行和标题行
+                    if (!line || line === '楼市回顾' || line.includes('今日楼市') || line.includes('昨日楼市')) {
+                        continue;
                     }
                     
-                    console.log(`  [调试] 提取的行数: ${resultLines.length}`);
-                    console.log(`  [调试] 提取的内容: ${resultLines.join('\n')}`);
-                    
-                    if (resultLines.length > 0) {
-                        result.marketReview = resultLines.join('\n');
-                        console.log(`  ✅ 楼市回顾: ${result.marketReview}`);
-                    } else {
-                        console.log(`  ⚠️ 未找到楼市回顾内容`);
+                    // 如果遇到"17:00"提示，停止提取
+                    if (line.includes('17:00')) {
+                        break;
                     }
+                    
+                    resultLines.push(line);
+                    
+                    // 最多取5行
+                    if (resultLines.length >= 5) break;
+                }
+                
+                console.log(`  [调试] 提取的行数: ${resultLines.length}`);
+                
+                if (resultLines.length > 0) {
+                    result.marketReview = resultLines.join('\n');
+                    console.log(`  ✅ 楼市回顾: ${result.marketReview}`);
+                    break; // 成功提取，退出重试循环
                 } else {
-                    console.log(`  ⚠️ 未找到换行符`);
+                    console.log(`  ⚠️ 第${attempt + 1}次：未找到楼市回顾内容行`);
                 }
             } else {
-                console.log(`  ⚠️ 未找到"楼市回顾"`);
+                console.log(`  ⚠️ 第${attempt + 1}次：未找到"楼市回顾"区块`);
+                console.log(`  [调试] 页面文本长度: ${pageText.length}, 前200字符: ${pageText.substring(0, 200)}`);
             }
-        } else {
-            console.log(`  ⚠️ 页面文本提取失败`);
+        }
+        
+        if (!result.marketReview) {
+            console.log(`  ❌ 3次尝试均失败，无法提取楼市回顾`);
         }
         
         await closeTab();
         
     } catch (e) {
         console.log(`  ❌ 抓取楼市回顾失败: ${e.message}`);
+        try { await closeTab(); } catch (_) {}
     }
     
     return result;
@@ -541,6 +592,12 @@ async function main() {
         
         // 所有模式都需要首页数据
         result.homePage = await fetchHomePageData();
+        
+        // 🆕 从首页提取楼市回顾（所有模式都可用，比 trade.html 更稳定）
+        if (result.homePage && result.homePage.marketReview) {
+            result.marketReview = result.homePage.marketReview;
+            console.log(`\n  ✅ 楼市回顾已从首页提取`);
+        }
         
         if (mode === 'newhouse' || mode === 'all') {
             // 【修复】优先使用首页数据（更准确，因为trade页面是动态渲染）
@@ -584,12 +641,14 @@ async function main() {
             console.log(`\n  ✅ 二手房数据抓取完成`);
         }
         
-        // 新增：抓取楼市回顾（只在 secondhand 或 all 模式下运行）
-        if (mode === 'secondhand' || mode === 'all') {
+        // 抓取楼市回顾（所有模式都运行，但先检查首页是否已有）
+        if (!result.marketReview) {
             const reviewData = await fetchMarketReview();
             if (reviewData && reviewData.marketReview) {
                 result.marketReview = reviewData.marketReview;
             }
+        } else {
+            console.log(`  ℹ️ 楼市回顾已从首页获取，跳过 trade.html`);
         }
         
         // 转换数据格式为看板期望的嵌套格式
@@ -614,6 +673,11 @@ async function main() {
                 yesterdaySaleArea: result.secondHand?.yesterdaySaleArea ?? result.secondHand?.saleArea ?? 0,
                 listingCount: result.secondHand?.listingCount ?? result.secondHand?.secondHandListingCount ?? 0
             };
+        }
+        
+        // 🆕 楼市回顾始终保存（如果有的话）
+        if (result.marketReview) {
+            formattedResult.marketReview = result.marketReview;
         }
         
         // 生成日报（测试模式和正常模式都生成）
