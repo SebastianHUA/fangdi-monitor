@@ -656,10 +656,16 @@ const recentSubscriptions = [
     }
 ];
 
+// 使用本地时区日期（避免UTC偏移导致日期错误）
+const now = new Date();
+const dateStr = now.getFullYear() + '-' +
+    String(now.getMonth() + 1).padStart(2, '0') + '-' +
+    String(now.getDate()).padStart(2, '0');
+
 const outputData = {
-    date: new Date().toISOString().split('T')[0],
+    date: dateStr,
     recentSubscriptions: recentSubscriptions,
-    updateTime: new Date().toISOString()
+    updateTime: now.toISOString()
 };
 
 const outputPath = path.join(__dirname, 'data', 'subscription_data.json');
