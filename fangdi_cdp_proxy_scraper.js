@@ -68,7 +68,9 @@ function apiCall(endpoint, method = 'GET', body = null) {
 
 async function createTab(url) {
     console.log(`  [CDP] 创建新tab: ${url}`);
-    const result = await apiCall('/new', 'POST', url);
+    // 【修复】CDP Proxy 的 /new 仅从 query 参数读取 url，不解析 body；
+    // 必须用 /new?url=... 形式，否则 tab 停在 about:blank 导致抓取全 0
+    const result = await apiCall(`/new?url=${encodeURIComponent(url)}`, 'POST');
     targetId = result.targetId;
     console.log(`  ✅ Tab已创建: ${targetId}`);
     
