@@ -1,0 +1,49 @@
+[
+  {
+    "field_values": [
+      {
+        "field": "日期",
+        "text_value": {
+          "items": [
+            {
+              "text": "2026-07-04",
+              "type": "text"
+            }
+          ]
+        }
+      },
+      {
+        "field": "一手房成交套数",
+        "number_value": 0
+      },
+      {
+        "field": "一手房成交面积（㎡）",
+        "number_value": 0
+      },
+      {
+        "field": "一手房套均面积（㎡/套）",
+        "number_value": 0
+      },
+      {
+        "field": "一手房可售套数",
+        "number_value": 80
+      },
+      {
+        "field": "二手房成交套数",
+        "number_value": 0
+      },
+      {
+        "field": "二手房成交面积（㎡）",
+        "number_value": 0
+      },
+      {
+        "field": "二手房套均面积（㎡/套）",
+        "number_value": 0
+      },
+      {
+        "field": "二手房挂牌套数",
+        "number_value": 0
+      }
+    ]
+  }
+]
