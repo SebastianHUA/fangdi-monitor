@@ -46,8 +46,8 @@ function apiCall(endpoint, method = 'GET', body = null) {
 
 async function createTab(url) {
     console.log(`  [CDP] 创建新tab: ${url}`);
-    const result = await apiCall('/new', 'POST', url);
-    targetId = result.targetId;
+    const result = await apiCall(`/new?url=${encodeURIComponent(url)}`, 'GET');
+    targetId = result.targetId || result.id;
     console.log(`  ✅ Tab已创建: ${targetId}`);
     await wait(12000); // 等待页面加载+JS渲染
     return targetId;
