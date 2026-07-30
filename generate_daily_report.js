@@ -1,28 +1,19 @@
 #!/usr/bin/env node
 /**
- * 生成完整的每日房地产成交通报
- * 合并一手房和二手房数据，生成Markdown日报
- * 
- * 使用方式：
- *   node generate_daily_report.js [json_file]
- * 
- * 参数：
- *   json_file: 可选，包含二手房数据的JSON文件（今天日期）
- *              如果不提供，则自动查找今天的JSON文件
- * 
- * 功能：
- *   1. 读取今天的JSON文件（包含二手房数据）
- *   2. 读取昨天的JSON文件（包含一手房数据）
- *   3. 合并数据
- *   4. 生成完整的Markdown日报
- *   5. 保存日报到文件
- *   6. 输出日报内容（用于微信推送）
+ * 生成完整的每日房地产成交通报（固定模板版）
+ *
+ * 数据来源：data/fangdi_data.json（数组，每条含 date/newHouse/secondHand/marketReview）
+ * 输出路径：data/fangdi_daily_report_YYYY-MM-DD.md（07:00 任务读取此路径发送微信）
+ *
+ * 用法：
+ *   node generate_daily_report.js            # 默认取“昨天”为数据日期
+ *   node generate_daily_report.js 2026-07-28 # 指定数据日期（用于补生成/校准）
  */
 
 const fs = require('fs');
 const path = require('path');
 
-// 获取指定日期的字符串（YYYY-MM-DD，使用本地时间）
+// 本地时间日期字符串 YYYY-MM-DD
 function getDateString(date) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -30,215 +21,138 @@ function getDateString(date) {
     return `${year}-${month}-${day}`;
 }
 
-// 读取JSON文件
-function readJSONFile(filePath) {
-    try {
-        if (!fs.existsSync(filePath)) {
-            console.log(`  [警告] 文件不存在: ${filePath}`);
-            return null;
-        }
-        const content = fs.readFileSync(filePath, 'utf8');
-        return JSON.parse(content);
-    } catch (e) {
-        console.log(`  [错误] 读取文件失败: ${filePath}, ${e.message}`);
-        return null;
-    }
+// 千分位整数（无小数），如 44852 -> 44,852
+function fmtInt(n) {
+    return Math.round(n || 0).toLocaleString('en-US');
 }
 
-// 生成完整日报的Markdown内容（优化版：适合微信阅读）
+// 楼市回顾原文清洗：与官方展示模板保持一致（㎡、精简区域分隔符）
+function normalizeMarketReview(raw) {
+    if (!raw) return '';
+    let s = raw;
+    s = s.replace(/平方米/g, '㎡').replace(/万平方米/g, '万㎡');      // 单位统一
+    s = s.replace(/，\s+/g, '，');                                    // 去掉全角逗号后的多余空格
+    s = s.replace(/其中位于/g, '其中');                               // 去“位于”
+    s = s.replace(/(郊环以外|外郊环间|中外环间|内中环间|内环以内)的(\d+)个/g, '$1$2个'); // 去“的”
+    s = s.replace(/其中([^。]+)。/, (m, body) => '其中' + body.replace(/，/g, '、') + '。'); // 区域间“，”转“、”
+    return s;
+}
+
+// 生成固定格式日报
 function generateReportMarkdown(data, date) {
     const lines = [];
-    
-    // 标题
-    lines.push(`📊 上海房地产市场日报`);
-    lines.push(`📅 数据日期：${date}`);
-    lines.push(``);
-    
-    // 一、一手房成交情况
-    lines.push(`🏗️ 一手房成交情况`);
-    lines.push(``);
-    
     const newHouse = data.newHouse || {};
-    const homePage = data.homePage || {};
-    
-    if (newHouse && (newHouse.todaySignUnits || homePage.todaySignUnits)) {
-        const signUnits = newHouse.todaySignUnits || homePage.todaySignUnits || 0;
-        const signArea = newHouse.todaySignArea || homePage.todaySignArea || 0;
-        const availableUnits = newHouse.availableUnits || homePage.newHouseAvailableUnits || 0;
-        
-        lines.push(`✅ 当日签约：${signUnits}套 / ${signArea}㎡`);
-        
-        if (signUnits > 0 && signArea > 0) {
-            const avgArea = (signArea / signUnits).toFixed(1);
-            lines.push(`📐 套均面积：${avgArea}㎡/套`);
-        }
-        
-        lines.push(`🏢 可售住宅：${availableUnits.toLocaleString()}套`);
-    } else {
-        lines.push(`（无数据）`);
-    }
-    
-    lines.push(``);
-    
-    // 二、二手房成交情况
-    lines.push(`🏘️ 二手房成交情况`);
-    lines.push(``);
-    
     const secondHand = data.secondHand || {};
-    
-    if (secondHand && secondHand.yesterdaySaleCount) {
-        const saleCount = secondHand.yesterdaySaleCount || 0;
-        const saleArea = secondHand.yesterdaySaleArea || 0;
-        const listingCount = secondHand.listingCount || 0;
-        
-        lines.push(`✅ 当日签约：${saleCount}套 / ${saleArea}㎡`);
-        
-        if (saleCount > 0 && saleArea > 0) {
-            const avgArea = (saleArea / saleCount).toFixed(1);
-            lines.push(`📐 套均面积：${avgArea}㎡/套`);
-        }
-        
-        lines.push(`📋 挂牌套数：${listingCount.toLocaleString()}套`);
-    } else {
-        lines.push(`（无数据）`);
+    const marketReview = normalizeMarketReview(data.marketReview);
+
+    lines.push('📊 上海房地产市场日报');
+    lines.push(`📅 ${date}`);
+    lines.push('');
+
+    const nhU = newHouse.todaySignUnits || 0;
+    const nhA = newHouse.todaySignArea || 0;
+    const nhAvail = (newHouse.availableUnits != null) ? newHouse.availableUnits : 0;
+    lines.push(`🏗️ 一手房：当日签约 ${fmtInt(nhU)}套 / ${fmtInt(nhA)}㎡`);
+    const nhAvg = (nhU > 0 && nhA > 0) ? (nhA / nhU).toFixed(2) : '0.00';
+    lines.push(`　📐 套均 ${nhAvg}㎡ | 🏢 可售 ${fmtInt(nhAvail)}套`);
+    lines.push('');
+
+    const shC = secondHand.yesterdaySaleCount || 0;
+    const shA = secondHand.yesterdaySaleArea || 0;
+    const shList = (secondHand.listingCount != null) ? secondHand.listingCount : 0;
+    lines.push(`🏘️ 二手房：当日签约 ${fmtInt(shC)}套 / ${fmtInt(shA)}㎡`);
+    const shAvg = (shC > 0 && shA > 0) ? (shA / shC).toFixed(2) : '0.00';
+    lines.push(`　📐 套均 ${shAvg}㎡ | 📋 挂牌 ${fmtInt(shList)}笔`);
+    lines.push('');
+
+    if (marketReview) {
+        lines.push('📰 楼市回顾');
+        lines.push(marketReview.trim());
+        lines.push('');
     }
-    
-    lines.push(``);
-    
-    // 三、楼市回顾（新增）
-    if (data.marketReview) {
-        lines.push(`📰 楼市回顾`);
-        lines.push(``);
-        lines.push(data.marketReview);
-        lines.push(``);
-    }
-    
-    // 四、数据链接
-    lines.push(`📈 数据看板：`);
-    lines.push(`https://sebastianhua.github.io/fangdi-monitor/`);
-    lines.push(``);
-    lines.push(`📋 数据表格：`);
-    lines.push(`https://docs.qq.com/smartsheet/DTnNsSXVoc21TbkhF`);
-    
+
+    lines.push('📈 看板：https://sebastianhua.github.io/fangdi-monitor/');
+    lines.push('📋 表格：https://docs.qq.com/smartsheet/DTnNsSXVoc21TbkhF');
+
     return lines.join('\n');
 }
 
 // 主函数
 function main() {
     console.log('[日报生成] 开始...');
-    
-    // 解析命令行参数
     const args = process.argv.slice(2);
-    const inputFile = args[0]; // 可选的JSON文件路径
-    
-    // 计算日期
+    // 支持两种写法：`node generate_daily_report.js 2026-07-30` 或 `--date=2026-07-30`
+    let explicitDate = null;
+    for (const a of args) {
+        const m = /^--date=(\d{4}-\d{2}-\d{2})$/.exec(a);
+        if (m) { explicitDate = m[1]; break; }
+        if (/^\d{4}-\d{2}-\d{2}$/.test(a)) { explicitDate = a; break; }
+    }
+
     const today = new Date();
-    const todayStr = getDateString(today);
-    
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayStr = getDateString(yesterday);
-    
-    console.log(`[日报生成] 今天: ${todayStr}`);
-    console.log(`[日报生成] 昨天: ${yesterdayStr}`);
-    
-    // 1. 读取二手房数据（今天的JSON文件）
-    let secondHandFile;
-    if (inputFile && fs.existsSync(inputFile)) {
-        secondHandFile = inputFile;
-    } else {
-        secondHandFile = path.join(__dirname, `fangdi_data_${todayStr}.json`);
-    }
-    
-    console.log(`[日报生成] 读取二手房数据: ${secondHandFile}`);
-    const secondHandData = readJSONFile(secondHandFile);
-    
-    if (!secondHandData) {
-        console.log(`[日报生成] ❌ 未找到二手房数据文件`);
+
+    const dataDate = explicitDate || yesterdayStr;
+    console.log(`[日报生成] 数据日期: ${dataDate}`);
+
+    const dataFile = path.join(__dirname, 'data', 'fangdi_data.json');
+    let all = null;
+    try {
+        all = JSON.parse(fs.readFileSync(dataFile, 'utf8'));
+    } catch (e) {
+        console.error(`[日报生成] ❌ 读取 ${dataFile} 失败: ${e.message}`);
         process.exit(1);
     }
-    
-    // 2. 读取一手房数据（昨天的JSON文件）
-    const newHouseFile = path.join(__dirname, `fangdi_data_${yesterdayStr}.json`);
-    console.log(`[日报生成] 读取一手房数据: ${newHouseFile}`);
-    const newHouseData = readJSONFile(newHouseFile);
-    
-    if (!newHouseData) {
-        console.log(`[日报生成] ⚠️ 未找到一手房数据文件，将只生成二手房报告`);
+    if (!Array.isArray(all)) {
+        console.error('[日报生成] ❌ 数据不是数组');
+        process.exit(1);
     }
-    
-    // 3. 合并数据（优先使用当前数据文件中的一手房数据）
-    let newHouse = null;
-    
-    // 尝试从当前数据文件获取
-    if (secondHandData && secondHandData.newHouse && secondHandData.newHouse.todaySignUnits) {
-        newHouse = secondHandData.newHouse;
-    } else if (newHouseData && newHouseData.newHouse) {
-        newHouse = newHouseData.newHouse;
+
+    let record = all.find(r => r.date === dataDate);
+    if (!record) {
+        // 兜底：取最近一条“一手房+二手房”都有的记录
+        record = all.find(r => r.newHouse && r.newHouse.todaySignUnits && r.secondHand && r.secondHand.yesterdaySaleCount);
+        if (record) console.log(`[日报生成] ⚠️ 未找到 ${dataDate}，改用最近完整记录 ${record.date}`);
     }
-    
-    // 如果一手房数据为0，尝试从 marketReview 提取
-    if ((!newHouse || !newHouse.todaySignUnits || newHouse.todaySignUnits === 0) && secondHandData && secondHandData.marketReview) {
-        const match = secondHandData.marketReview.match(/预\/出售各类商品房(\d+)套/);
-        const areaMatch = secondHandData.marketReview.match(/面积([\d.]+)万平方米/);
-        if (match) {
-            newHouse = {
-                todaySignUnits: parseInt(match[1]),
-                todaySignArea: areaMatch ? parseFloat(areaMatch[1]) * 10000 : 0,
-                availableUnits: newHouse ? newHouse.availableUnits : null,
-                availableArea: newHouse ? newHouse.availableArea : null
-            };
-            console.log(`[日报生成] ✅ 从 marketReview 补全一手房数据: ${newHouse.todaySignUnits}套`);
+    if (!record) {
+        console.error('[日报生成] ❌ 未找到可用记录');
+        process.exit(1);
+    }
+
+    // 若一手房缺失，尝试从楼市回顾回补（todaySignUnits / todaySignArea）
+    if ((!record.newHouse || !record.newHouse.todaySignUnits) && record.marketReview) {
+        const m = record.marketReview.match(/预\/出售各类商品房(\d+)套/);
+        const a = record.marketReview.match(/面积([\d.]+)万平方米/);
+        if (m) {
+            record = Object.assign({}, record, {
+                newHouse: {
+                    todaySignUnits: parseInt(m[1]),
+                    todaySignArea: a ? parseFloat(a[1]) * 10000 : 0,
+                    availableUnits: record.newHouse ? record.newHouse.availableUnits : null
+                }
+            });
+            console.log(`[日报生成] ✅ 从楼市回顾回补一手房: ${m[1]}套`);
         }
     }
-    
-    const mergedData = {
-        date: yesterdayStr,
-        newHouse: newHouse,
-        secondHand: secondHandData.secondHand || null,
-        homePage: secondHandData.homePage || (newHouseData ? newHouseData.homePage : null),
-        marketReview: secondHandData.marketReview || null  // 新增：楼市回顾
-    };
-    
-    // 调试信息
-    if (secondHandData && secondHandData.newHouse && secondHandData.newHouse.todaySignUnits) {
-        console.log(`[日报生成] ✅ 使用当前数据文件中的一手房数据: ${secondHandData.newHouse.todaySignUnits}套`);
-    } else if (newHouseData && newHouseData.newHouse) {
-        console.log(`[日报生成] ✅ 使用昨天数据文件中的一手房数据: ${newHouseData.newHouse.todaySignUnits}套`);
-    } else {
-        console.log(`[日报生成] ⚠️ 未找到一手房数据`);
-    }
-    if (!mergedData.newHouse && secondHandData.homePage) {
-        mergedData.newHouse = {
-            todaySignUnits: secondHandData.homePage.todaySignUnits,
-            todaySignArea: secondHandData.homePage.todaySignArea,
-            availableUnits: secondHandData.homePage.newHouseAvailableUnits,
-            availableArea: secondHandData.homePage.newHouseAvailableArea
-        };
-    }
-    
-    // 5. 生成完整日报
-    const report = generateReportMarkdown(mergedData, yesterdayStr);
-    
-    // 6. 保存日报
-    const outputFile = path.join(__dirname, `上海房地产市场日报_${yesterdayStr}_完整版.md`);
-    fs.writeFileSync(outputFile, report, 'utf8');
-    console.log(`[日报生成] ✅ 日报已保存: ${outputFile}`);
-    
-    // 7. 输出日报内容（用于微信推送）
-    console.log('\n========== 日报内容（用于微信推送）==========');
+
+    const report = generateReportMarkdown(record, dataDate);
+
+    const outFile = path.join(__dirname, 'data', `fangdi_daily_report_${dataDate}.md`);
+    fs.writeFileSync(outFile, report, 'utf8');
+    console.log(`[日报生成] ✅ 日报已保存: ${outFile}`);
+
+    console.log('\n========== 日报内容 ==========');
     console.log(report);
     console.log('========== 日报结束 ==========\n');
-    
-    // 8. 返回输出文件路径
-    return outputFile;
+    return outFile;
 }
 
-// 执行
 if (require.main === module) {
     try {
-        const outputFile = main();
-        console.log(`[日报生成] ✅ 完成！输出文件: ${outputFile}`);
+        const out = main();
+        console.log(`[日报生成] ✅ 完成！输出: ${out}`);
         process.exit(0);
     } catch (e) {
         console.error(`[日报生成] ❌ 错误: ${e.message}`);
@@ -247,4 +161,4 @@ if (require.main === module) {
     }
 }
 
-module.exports = { generateReportMarkdown, main };
+module.exports = { generateReportMarkdown, main, normalizeMarketReview };
