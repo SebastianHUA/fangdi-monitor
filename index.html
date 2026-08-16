@@ -296,10 +296,18 @@
             document.getElementById('lastUpdate').textContent = '最后更新：' + new Date().toLocaleString('zh-CN');
         }
 
-        // 更新趋势图 - 细线，无边框
+        // 更新趋势图 - 细线，y 轴紧贴数据范围
         function updateCharts() {
             const viewData = getViewData();
-            
+
+            // 动态计算各图表的 y 轴范围（去掉 null/0 后取 92%~108% 区间，避免大片空白）
+            const nhVals = viewData.map(d => d.newHouseCount).filter(v => v != null);
+            const shVals = viewData.map(d => d.secondHandCount).filter(v => v != null);
+            const nhMin = nhVals.length ? Math.min(...nhVals) : 0;
+            const nhMax = nhVals.length ? Math.max(...nhVals) : 1;
+            const shMin = shVals.length ? Math.min(...shVals) : 0;
+            const shMax = shVals.length ? Math.max(...shVals) : 1;
+
             // 一手房趋势图
             if (charts.newHouse) charts.newHouse.destroy();
             const nhCtx = document.getElementById('newHouseChart').getContext('2d');
@@ -321,22 +329,28 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     plugins: {
-                        legend: { 
+                        legend: {
                             display: true,
-                            labels: { 
-                                boxWidth: 20,  // 减小示例图标宽度
-                                boxHeight: 2   // 细线
-                            } 
+                            labels: {
+                                boxWidth: 20,
+                                boxHeight: 2
+                            }
                         }
                     },
                     scales: {
-                        y: { beginAtZero: false, grid: { color: '#f0f0f0' } },
+                        y: {
+                            beginAtZero: false,
+                            min: Math.max(0, nhMin * 0.92),
+                            max: nhMax * 1.08,
+                            grid: { color: '#f0f0f0' }
+                        },
                         x: { grid: { display: false } }
                     }
                 }
             });
-            
+
             // 二手房趋势图
             if (charts.secondHand) charts.secondHand.destroy();
             const shCtx = document.getElementById('secondHandChart').getContext('2d');
@@ -358,17 +372,23 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     plugins: {
-                        legend: { 
+                        legend: {
                             display: true,
-                            labels: { 
-                                boxWidth: 20,  // 减小示例图标宽度
-                                boxHeight: 2   // 细线
-                            } 
+                            labels: {
+                                boxWidth: 20,
+                                boxHeight: 2
+                            }
                         }
                     },
                     scales: {
-                        y: { beginAtZero: false, grid: { color: '#f0f0f0' } },
+                        y: {
+                            beginAtZero: false,
+                            min: Math.max(0, shMin * 0.92),
+                            max: shMax * 1.08,
+                            grid: { color: '#f0f0f0' }
+                        },
                         x: { grid: { display: false } }
                     }
                 }
@@ -456,49 +476,59 @@
         async function updateSubscription() {
             const tbody = document.getElementById('subscriptionBody');
             tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;">加载中...</td></tr>';
-            
+
             try {
                 // 动态计算数据文件路径（适配本地服务器和CloudStudio部署）
                 const basePath = window.location.pathname.includes('/dashboard/') ? '../' : './';
                 const response = await fetch(basePath + 'data/subscription_data.json?t=' + Date.now());
                 if (!response.ok) throw new Error('认购数据加载失败');
                 const data = await response.json();
-                const subscriptions = data.recentSubscriptions || [];
-                
+                const raw = data.recentSubscriptions || [];
+
                 tbody.innerHTML = '';
-                
-                if (subscriptions.length === 0) {
+
+                if (raw.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;">暂无认购公示数据</td></tr>';
                     return;
                 }
-                
+
+                // 订阅数据使用中文键，统一映射为内部字段名
+                const subscriptions = raw.map(p => ({
+                    district: p['所在区'] || '-',
+                    projectName: p['项目名称'] || '-',
+                    company: p['开发企业'] || '-',
+                    subscribeStart: p['认购开始时间'] || '',
+                    subscribeEnd: p['认购结束时间'] || '',
+                    units: p['套数'] || 0,
+                    area: p['上市面积'] || 0,
+                    avgPrice: p['备案均价'] || 0
+                }));
+
                 // 过滤前后10天的认购楼盘
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 const tenDaysAgo = new Date(today);
                 tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
-                
+
                 const filtered = subscriptions.filter(p => {
                     const startDate = new Date(p.subscribeStart);
                     return startDate >= tenDaysAgo && startDate <= today;
                 });
-                
+
                 if (filtered.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;">近10天无认购楼盘</td></tr>';
                     return;
                 }
-                
+
                 // 按开始日期倒序排列（最新的在前）
                 filtered.sort((a, b) => {
                     return new Date(b.subscribeStart) - new Date(a.subscribeStart);
                 });
-                
+
                 filtered.forEach(p => {
                     const tr = document.createElement('tr');
-                    
+
                     // 判断状态
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
                     const startDate = new Date(p.subscribeStart);
                     const endDate = new Date(p.subscribeEnd);
                     let status = '';
@@ -513,13 +543,13 @@
                         status = '进行中';
                         statusClass = 'badge-ongoing';
                     }
-                    
+
                     tr.innerHTML = `
-                        <td>${p.district || '-'}</td>
-                        <td>${p.projectName || '-'}</td>
-                        <td>${p.company || '-'}</td>
-                        <td>${p.subscribeStart || '-'}</td>
-                        <td>${p.subscribeEnd || '-'}</td>
+                        <td>${p.district}</td>
+                        <td>${p.projectName}</td>
+                        <td>${p.company}</td>
+                        <td>${p.subscribeStart}</td>
+                        <td>${p.subscribeEnd}</td>
                         <td>${p.units ? p.units.toLocaleString() : '-'}</td>
                         <td>${p.area ? p.area.toLocaleString() : '-'}</td>
                         <td>${p.avgPrice ? p.avgPrice.toLocaleString() : '-'}</td>
@@ -527,7 +557,7 @@
                     `;
                     tbody.appendChild(tr);
                 });
-                
+
             } catch (e) {
                 tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#e53935;">认购数据加载失败：' + e.message + '</td></tr>';
             }
