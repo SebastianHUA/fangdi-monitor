@@ -321,6 +321,13 @@
         function updateCharts() {
             const viewData = getViewData();
             
+            const nhVals = viewData.map(d => d.newHouseCount).filter(v => v != null);
+            const shVals = viewData.map(d => d.secondHandCount).filter(v => v != null);
+            const nhMin = nhVals.length ? Math.min(...nhVals) : 0;
+            const nhMax = nhVals.length ? Math.max(...nhVals) : 1;
+            const shMin = shVals.length ? Math.min(...shVals) : 0;
+            const shMax = shVals.length ? Math.max(...shVals) : 1;
+            
             // 一手房趋势图
             if (charts.newHouse) charts.newHouse.destroy();
             const nhCtx = document.getElementById('newHouseChart').getContext('2d');
@@ -342,6 +349,7 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     plugins: {
                         legend: { 
                             display: true,
@@ -352,7 +360,12 @@
                         }
                     },
                     scales: {
-                        y: { beginAtZero: false, grid: { color: '#f0f0f0' } },
+                        y: {
+                            beginAtZero: false,
+                            min: Math.max(0, nhMin * 0.92),
+                            max: nhMax * 1.08,
+                            grid: { color: '#f0f0f0' }
+                        },
                         x: { grid: { display: false } }
                     }
                 }
@@ -379,6 +392,7 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     plugins: {
                         legend: { 
                             display: true,
@@ -389,7 +403,12 @@
                         }
                     },
                     scales: {
-                        y: { beginAtZero: false, grid: { color: '#f0f0f0' } },
+                        y: {
+                            beginAtZero: false,
+                            min: Math.max(0, shMin * 0.92),
+                            max: shMax * 1.08,
+                            grid: { color: '#f0f0f0' }
+                        },
                         x: { grid: { display: false } }
                     }
                 }
