@@ -510,8 +510,17 @@
                 const tenDaysAgo = new Date(today);
                 tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
 
+                // 认购开始/结束时间为纯日期字符串(如 2026-08-27)，new Date() 会按 UTC 零点解析，
+                // 在 GMT+8 下偏移 +8h，使"今天开始"的楼盘被错误过滤。补 T00:00:00 强制按本地零点解析。
+                const parseStartDate = (s) => {
+                    if (!s) return null;
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return new Date(s + 'T00:00:00');
+                    return new Date(s);
+                };
+
                 const filtered = subscriptions.filter(p => {
-                    const startDate = new Date(p.subscribeStart);
+                    const startDate = parseStartDate(p.subscribeStart);
+                    if (!startDate || isNaN(startDate)) return false;
                     return startDate >= tenDaysAgo && startDate <= today;
                 });
 
@@ -528,9 +537,9 @@
                 filtered.forEach(p => {
                     const tr = document.createElement('tr');
 
-                    // 判断状态
-                    const startDate = new Date(p.subscribeStart);
-                    const endDate = new Date(p.subscribeEnd);
+                    // 判断状态（与过滤一致，按本地零点解析，避免时区偏移误判）
+                    const startDate = parseStartDate(p.subscribeStart);
+                    const endDate = parseStartDate(p.subscribeEnd);
                     let status = '';
                     let statusClass = '';
                     if (today < startDate) {
