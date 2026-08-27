@@ -5,9 +5,36 @@
  * 数据来源：data/fangdi_data.json（数组，每条含 date/newHouse/secondHand/marketReview）
  * 输出路径：data/fangdi_daily_report_YYYY-MM-DD.md（07:00 任务读取此路径发送微信）
  *
+ * 模板样式（2026-08-01 起生效，主人在微信中指定）：
+ *   📊 上海房地产市场日报
+ *   📅 数据日期：2026-07-27
+ *   （空行）
+ *   🏗️ 一手房成交情况
+ *   （空行）
+ *   ✅ 当日签约：299套 / 27,133㎡
+ *   📐 套均面积：90.75㎡/套
+ *   🏢 可售住宅：59,063套
+ *   （空行）
+ *   🏘️ 二手房成交情况
+ *   （空行）
+ *   ✅ 当日签约：651套 / 53,772㎡
+ *   📐 套均面积：82.60㎡/套
+ *   📋 挂牌套数：310,007套
+ *   （空行）
+ *   📰 楼市回顾
+ *   （空行）
+ *   1、今日新开房源……（原始 marketReview，仅去掉全角逗号后多余空格）
+ *   （空行）
+ *   📈 数据看板：
+ *   https://sebastianhua.github.io/fangdi-monitor/
+ *   （空行）
+ *   📋 数据表格：
+ *   https://docs.qq.com/smartsheet/DTnNsSXVoc21TbkhF
+ *
  * 用法：
  *   node generate_daily_report.js            # 默认取“昨天”为数据日期
  *   node generate_daily_report.js 2026-07-28 # 指定数据日期（用于补生成/校准）
+ *   node generate_daily_report.js --date=2026-07-28
  */
 
 const fs = require('fs');
@@ -26,16 +53,10 @@ function fmtInt(n) {
     return Math.round(n || 0).toLocaleString('en-US');
 }
 
-// 楼市回顾原文清洗：与官方展示模板保持一致（㎡、精简区域分隔符）
-function normalizeMarketReview(raw) {
+// 楼市回顾原始文本最小清洗：仅去掉全角逗号后的多余空格，保留“位于/的/平方米/万平方米”等官网原始措辞
+function cleanMarketReview(raw) {
     if (!raw) return '';
-    let s = raw;
-    s = s.replace(/平方米/g, '㎡').replace(/万平方米/g, '万㎡');      // 单位统一
-    s = s.replace(/，\s+/g, '，');                                    // 去掉全角逗号后的多余空格
-    s = s.replace(/其中位于/g, '其中');                               // 去“位于”
-    s = s.replace(/(郊环以外|外郊环间|中外环间|内中环间|内环以内)的(\d+)个/g, '$1$2个'); // 去“的”
-    s = s.replace(/其中([^。]+)。/, (m, body) => '其中' + body.replace(/，/g, '、') + '。'); // 区域间“，”转“、”
-    return s;
+    return raw.replace(/，\s+/g, '，').trim();
 }
 
 // 生成固定格式日报
@@ -43,36 +64,46 @@ function generateReportMarkdown(data, date) {
     const lines = [];
     const newHouse = data.newHouse || {};
     const secondHand = data.secondHand || {};
-    const marketReview = normalizeMarketReview(data.marketReview);
+    const marketReview = cleanMarketReview(data.marketReview);
 
     lines.push('📊 上海房地产市场日报');
-    lines.push(`📅 ${date}`);
+    lines.push(`📅 数据日期：${date}`);
     lines.push('');
 
     const nhU = newHouse.todaySignUnits || 0;
     const nhA = newHouse.todaySignArea || 0;
     const nhAvail = (newHouse.availableUnits != null) ? newHouse.availableUnits : 0;
-    lines.push(`🏗️ 一手房：当日签约 ${fmtInt(nhU)}套 / ${fmtInt(nhA)}㎡`);
+    lines.push('🏗️ 一手房成交情况');
+    lines.push('');
+    lines.push(`✅ 当日签约：${fmtInt(nhU)}套 / ${fmtInt(nhA)}㎡`);
     const nhAvg = (nhU > 0 && nhA > 0) ? (nhA / nhU).toFixed(2) : '0.00';
-    lines.push(`　📐 套均 ${nhAvg}㎡ | 🏢 可售 ${fmtInt(nhAvail)}套`);
+    lines.push(`📐 套均面积：${nhAvg}㎡/套`);
+    lines.push(`🏢 可售住宅：${fmtInt(nhAvail)}套`);
     lines.push('');
 
     const shC = secondHand.yesterdaySaleCount || 0;
     const shA = secondHand.yesterdaySaleArea || 0;
     const shList = (secondHand.listingCount != null) ? secondHand.listingCount : 0;
-    lines.push(`🏘️ 二手房：当日签约 ${fmtInt(shC)}套 / ${fmtInt(shA)}㎡`);
+    lines.push('🏘️ 二手房成交情况');
+    lines.push('');
+    lines.push(`✅ 当日签约：${fmtInt(shC)}套 / ${fmtInt(shA)}㎡`);
     const shAvg = (shC > 0 && shA > 0) ? (shA / shC).toFixed(2) : '0.00';
-    lines.push(`　📐 套均 ${shAvg}㎡ | 📋 挂牌 ${fmtInt(shList)}笔`);
+    lines.push(`📐 套均面积：${shAvg}㎡/套`);
+    lines.push(`📋 挂牌套数：${fmtInt(shList)}套`);
     lines.push('');
 
     if (marketReview) {
         lines.push('📰 楼市回顾');
-        lines.push(marketReview.trim());
+        lines.push('');
+        lines.push(marketReview);
         lines.push('');
     }
 
-    lines.push('📈 看板：https://sebastianhua.github.io/fangdi-monitor/');
-    lines.push('📋 表格：https://docs.qq.com/smartsheet/DTnNsSXVoc21TbkhF');
+    lines.push('📈 数据看板：');
+    lines.push('https://sebastianhua.github.io/fangdi-monitor/');
+    lines.push('');
+    lines.push('📋 数据表格：');
+    lines.push('https://docs.qq.com/smartsheet/DTnNsSXVoc21TbkhF');
 
     return lines.join('\n');
 }
@@ -161,4 +192,4 @@ if (require.main === module) {
     }
 }
 
-module.exports = { generateReportMarkdown, main, normalizeMarketReview };
+module.exports = { generateReportMarkdown, main, cleanMarketReview };
