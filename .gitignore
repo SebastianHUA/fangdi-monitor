@@ -72,6 +72,8 @@ wheels/
 Thumbs.db
 
 # 项目特定
+# 07:00 任务的微信发送哨兵标记（data/.sent_YYYY-MM-DD）
+data/.sent_*
 # 房地产成交数据原始文件（可能含敏感信息）
 raw_data/
 原始数据/
