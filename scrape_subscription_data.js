@@ -6,6 +6,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 
 const CDP_PROXY = 'http://127.0.0.1:3456';
 const SUBSCRIPTION_URL = 'https://www.fangdi.com.cn/new_house/new_house_jjswlpgs.html';
@@ -274,8 +275,42 @@ async function main() {
         console.log('\n===NEW_PROJECTS_JSON===');
         console.log(JSON.stringify(newProjects, null, 2));
         console.log('===END_JSON===');
+
+        // 🚨 自动同步腾讯文档（2026-09-04 加）
+        // 背景：自动化任务常常在抓完后「忘记」同步腾讯文档，或走已失效的旧通道
+        // （mcporter/tencentdocs.py → no_token），导致数据只进 GitHub 不进表。
+        // 这里把同步直接焊进抓取流程，只要跑了本脚本就会同步，不依赖调用方记得。
+        // 同步脚本内置三级去重 + 字段自检 + 回读校验，重复执行安全。
+        // 用 --no-sync 可关闭（手动调试时用）。
+        if (!process.argv.includes('--no-sync')) {
+            autoSyncToTencentDoc(dateStr);
+        }
     } else {
         console.log('\n📋 无新增楼盘，仅更新日期。');
+    }
+}
+
+/**
+ * 调用 sync_subscription_0g5JQL.py 把新增楼盘同步到腾讯文档 0g5JQL。
+ * 失败只告警，不改变本脚本的退出码（抓取本身是成功的）。
+ */
+function autoSyncToTencentDoc(dateStr) {
+    const PY311 = 'C:\\Users\\huaxi\\AppData\\Local\\Programs\\Python\\Python311\\python.exe';
+    const script = path.join(__dirname, 'sync_subscription_0g5JQL.py');
+    console.log('\n[AUTO-SYNC] 开始同步腾讯文档 0g5JQL ...');
+    try {
+        const out = execFileSync(PY311, [script, '--date', dateStr], {
+            cwd: __dirname,
+            encoding: 'utf8',
+            stdio: ['ignore', 'pipe', 'pipe'],
+        });
+        console.log(out.trim());
+        console.log('[AUTO-SYNC] ✅ 腾讯文档同步完成');
+    } catch (e) {
+        const detail = ((e.stdout || '') + (e.stderr || '')).trim();
+        console.error('[AUTO-SYNC] ❌ 腾讯文档同步失败：');
+        console.error(detail || e.message);
+        console.error('[AUTO-SYNC] 可手动补跑：' + PY311 + ' ' + script + ' --date ' + dateStr);
     }
 }
 
