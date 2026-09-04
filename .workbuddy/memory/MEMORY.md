@@ -76,9 +76,17 @@ bwHrDx字段带单位后缀(如"一手房成交面积（㎡）")；共12字段�
 认购过滤窗口已改为 **过去10天 ~ 未来14天**(2026-09-04修复)：旧逻辑 `startDate <= today` 只显示已开始的，把"刚公示、明天才开认购"的新盘全漏掉（9/5 开盘的 3 个新盘被误杀），而代码里"即将开始"状态分支因此永不触发
 验证改动：改完 push 后等 ~75s，curl 线上 html grep 新变量名确认 Pages 已部署
 
+## 工作区整洁约定(2026-09-04 主人拍板: "不要存不想干的")
+🚨 **临时产物一律不落工作区、不进 git**。用完即删；确实要留的中间文件写到已被忽略的路径，绝不在根目录留痕
+.gitignore 已固化规则(根目录 `/*.png`、`/*_2026-*.py|js`、data 下 `.notify_*/.alert_*/.watchdog_*/wechat_*.txt/land_wechat_*/work_log_*.md/_scrape_*.log`)
+日常纪律: 抓取日志/告警文本/微信推送文本/截屏 → 用完 `rm -f`；一次性脚本(带日期副本、debug_*/explore_*/test_*、v2/v3 试错版) 用完即删，不留副本
+🚨 **核心脚本必须入库**(丢了整条链路就断): tdoc_mcp.py / tdoc_helper.py / work_log_sync.py / sync_07am_*.py / sync_2350_*.py / sync_subscription_*.py / scrape_subscription_data.js / land_tdoc_sync.py / gen_land_xlsx.py / send_*.py
+  → 每次新建脚本后自查 `git ls-files --error-unmatch <f>`，UNTRACKED 就补 add
+清理存货必须**先列清单经主人确认**，不擅自删（old_scripts/58个、根目录废弃脚本、截屏图）
+
 ## 微信日报格式
 📊上海房地产市场日报/📅数据日期/🏗️一手房(✅当日签约X套/X㎡,📐套均,🏢可售)/🏘️二手(✅当日签约,📐套均,📋挂牌)/📰楼市回顾(不清洗)/📈看板URL/📋表格URL
-纯数据发梦比鱿鱼丝+沈胄磊; 异常只发梦比鱿鱼丝
+纯数据发梦比鱿鱼丝+沈胄磊+周凯琦; 异常只发梦比鱿鱼丝
 
 ## 截图偏好(2026-08-30固化,主人确认)
 🚨 **通道**: 截图只走对话框 present_files 发主人,**不发微信**(含文件助手/本人"梦比鱿鱼丝")。
