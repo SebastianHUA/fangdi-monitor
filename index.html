@@ -504,11 +504,17 @@
                     avgPrice: p['备案均价'] || 0
                 }));
 
-                // 过滤前后10天的认购楼盘
+                // 过滤窗口：过去10天 ~ 未来14天
+                // 认购公示本质是"预告"：楼盘通常在认购开始前 1~3 天公示。
+                // 早期只显示"已开始"的(startDate <= today)，会把刚公示的新盘全部漏掉
+                // （2026-09-04 踩坑：9/5 开始认购的悦海棠苑二期等 3 个新盘被过滤，主人看不到）。
+                // 故上限放宽到未来 14 天，让"即将开始"的楼盘也能展示。
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 const tenDaysAgo = new Date(today);
                 tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+                const fourteenDaysLater = new Date(today);
+                fourteenDaysLater.setDate(fourteenDaysLater.getDate() + 14);
 
                 // 认购开始/结束时间为纯日期字符串(如 2026-08-27)，new Date() 会按 UTC 零点解析，
                 // 在 GMT+8 下偏移 +8h，使"今天开始"的楼盘被错误过滤。补 T00:00:00 强制按本地零点解析。
@@ -521,11 +527,11 @@
                 const filtered = subscriptions.filter(p => {
                     const startDate = parseStartDate(p.subscribeStart);
                     if (!startDate || isNaN(startDate)) return false;
-                    return startDate >= tenDaysAgo && startDate <= today;
+                    return startDate >= tenDaysAgo && startDate <= fourteenDaysLater;
                 });
 
                 if (filtered.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;">近10天无认购楼盘</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;">暂无认购公示楼盘</td></tr>';
                     return;
                 }
 

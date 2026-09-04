@@ -512,19 +512,21 @@
                     return;
                 }
                 
-                // 过滤前后10天的认购楼盘
+                // 过滤窗口：过去10天 ~ 未来14天（认购公示是"预告"，只显示已开始的会漏掉新公示楼盘）
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 const tenDaysAgo = new Date(today);
                 tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+                const fourteenDaysLater = new Date(today);
+                fourteenDaysLater.setDate(fourteenDaysLater.getDate() + 14);
                 
                 const filtered = subscriptions.filter(p => {
                     const startDate = new Date(p['认购开始时间']);
-                    return startDate >= tenDaysAgo && startDate <= today;
+                    return startDate >= tenDaysAgo && startDate <= fourteenDaysLater;
                 });
                 
                 if (filtered.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;">近10天无认购楼盘</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;">暂无认购公示楼盘</td></tr>';
                     return;
                 }
                 
