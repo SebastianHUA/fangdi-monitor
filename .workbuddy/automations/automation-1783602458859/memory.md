@@ -1,5 +1,21 @@
 # 认购公示数据每日更新 - 执行记录
 
+## 2026-08-30
+- CDP Proxy 已在运行（端口 3456），`scrape_subscription_data.js` 执行成功。
+- 从官网提取 407 行 → 25 条在售记录，与本地 74 条对比，无新增楼盘。
+- 仅更新 `data/subscription_data.json` 日期至 2026-08-30。
+- GitHub 推送成功：commit `eab4426` "更新认购公示数据至2026-08-30"（远端有新提交，通过 `git pull --rebase --autostash` 后推送）。
+- 无需更新腾讯文档（无新楼盘），无需发送微信通知（脚本成功）。
+
+## 2026-08-29
+- CDP Proxy 已在运行（端口 3456），`scrape_subscription_data.js` 执行成功。
+- 从官网提取 423 行 → 26 条在售记录，与本地 73 条对比，新增 **1 个楼盘**：
+  - 锦棠瑞宸名邸（宝山区，宝山房管（2026）预字0000294号，8/30-9/2认购，均价 ¥58,483，92套）
+- 数据更新至 74 条，日期 2026-08-29。
+- GitHub 推送成功：commit `7fe7bea`（远端有新提交，stash + pull --rebase + stash pop 后推送）。
+- ✅ 腾讯文档同步成功：record_id `reDrHb`。
+- 无需发送微信通知（脚本成功）。
+
 ## 2026-08-28
 - CDP Proxy 已在运行（端口 3456），`scrape_subscription_data.js` 执行成功。
 - 从官网提取 407 行 → 25 条在售记录，与本地 72 条对比，新增 **1 个楼盘**：
@@ -386,74 +402,11 @@
   - 反复尝试中创建了 3 条测试记录（rP7ev7、r7JcGO、rqfnru），均已通过 `delete_records` 清理
 - 已通过 WeChat 向"梦比鱿鱼丝"发送成功通知（含数据异常提醒）。
 
-## 🚨🚨 2026-09-01 通道修复（务必先读，直接照做）
-
-**背景**：今日 07:15 本任务报"腾讯文档同步失败（自动化环境票据不可用）"。根因是下面三个通道**全部已失效**，不要再试：
-- ❌ `mcporter` / `mcporter.cmd` — 本机已不存在
-- ❌ `tdoc_helper.py` — 依赖 mcporter，已废
-- ❌ `tencentdocs.py tdoc_init / tdoc_call` — 报 `ERROR:no_token`
-
-**✅ 唯一可用通道**：`tdoc_mcp.py`（Claw 根目录，Python311 跑）
-```python
-import sys; sys.path.insert(0, r'C:\Users\huaxi\WorkBuddy\Claw')
-from tdoc_mcp import call, ok, get_field
-call('smartsheet.list_records', {'file_id':..., 'sheet_id':...})
-call('smartsheet.add_records', {'file_id':..., 'sheet_id':..., 'records':[{'field_values':[{...}]}]})
-call('smartsheet.delete_records', {'file_id':..., 'sheet_id':..., 'record_ids':[...]})
-```
-
-**✅ 同步一律走现成脚本，不要手搓**：
-```
-C:\Users\huaxi\AppData\Local\Programs\Python\Python311\python.exe sync_subscription_0g5JQL.py
-```
-（支持 `--date YYYY-MM-DD` / `--name 项目名` / `--dry-run`；内置三级去重 + 写入前字段自检 + 回读校验）
-
-**表 0g5JQL 结构（10 字段）**：
-| 表字段 | 类型 | 本地 JSON 字段 |
-|---|---|---|
-| 数据日期 | string_value 毫秒戳(上海午夜) = 发现日 | — |
-| 认购开始日期 / 认购结束日期 | string_value 毫秒戳(上海午夜) | 认购开始时间 / 认购结束时间 |
-| 项目名称 / 所在区 / 开发企业 | text_value | 同名 |
-| 认购比 | text_value | ⚠️ 本地叫 **入围比** |
-| 套数（套） | number_value | ⚠️ 本地叫 **套数** |
-| 上市面积（㎡） | number_value | ⚠️ 本地叫 **上市面积** |
-| 备案均价（元/㎡） | number_value | ⚠️ 本地叫 **备案均价** |
-
-🚨 **字段名必须映射**，直接 `item.get('套数（套）')` 会拿到 None → 静默丢 4 个字段（2026-09-01 踩过，产生了半截记录 rCXkev 已删除）。
-
-**日期口径**：数据日期 = 发现日（抓取当天），认购开始/结束 = 楼盘认购区间，三者都用上海午夜戳。历史上两者常不相等（批量补录时数据日期是统一的一天）。
-
-## 2026-09-01
-- GitHub 推送成功：commit `51b39b4 更新认购公示数据至2026-09-01`（新增1个楼盘：溯阳云筑 杨浦区 0000295号 64套 115400元/㎡ 认购9/2-9/6）
-- ⚠️ 腾讯文档同步失败（旧通道票据失效）→ 主人反馈后于 11:2x 人工补录
-- ✅ 已补录：record_id `rlE0WF`，10/10 字段完整，数据日期 2026-09-01
-- 🔍 同时发现**历史遗留 14 条真缺失**（8-17、8-19 同步失败遗留 + 若干"成功"记录实际未落表）：润耀华庭8/20、海宸华庭8/20、中交凤栖云城六期8/19、瑞耀名庭8/19、南翔秀城星岸华庭8/16、滨悦云庭8/16、浦宸名庭8/16、璟著名邸8/16、天宸雅苑8/5、隅尚云庭8/5、智铁和光雅筑7/31、天和尚海荟庭7/12、艺泰一品花园7/12、南翔秀城星岸华庭7/1 —— **待主人决定是否批量补录**
-- 🔍 另发现 5 条记录字段缺失：rNCLMh(潮鸣宸邸)/r7oFEA(贤和雅园) 缺项目名等4字段；reZxet(乐满庭)/rwbVgb(誉品雅苑)/reDrHb(锦棠瑞宸名邸) 缺3个日期字段 — 待修复
-
-## 🚨🚨 2026-09-04 根治：同步已焊进抓取脚本（今后不必再靠任务"记得"）
-
-**现象**：今日任务报告「认购数据更新成功，GitHub 已推送，但腾讯文档同步失败（no_token）」。
-**真相核查**：GitHub **确实推送成功**（commit `b1df917 更新认购公示数据至2026-09-04`，78 条）；
-真正失败的只有腾讯文档那一步 —— 任务流程里这一步走了已失效的旧通道（`tencentdocs.py tdoc_init` → no_token）。
-
-**已做两处根治（2026-09-04）：**
-1. **`scrape_subscription_data.js` 内置 AUTO-SYNC**：只要 `newProjects.length > 0`，抓完立即自动
-   `Python311 sync_subscription_0g5JQL.py --date <今天>`，不依赖调用方（自动化/人工）是否记得同步。
-   - 同步脚本内置三级去重 + 字段自检 + 回读校验 → 重复执行安全（实测重跑报 `待新增: 0 条 / NO_CHANGE`）
-   - 同步失败只告警，**不改变抓取脚本退出码**
-   - 手动调试可用 `--no-sync` 关闭
-2. **`tdoc_helper.py` 改为兼容垫片**：优先走 `tdoc_mcp.py`，旧 mcporter 逻辑仅兜底。
-   `call()/ok()` 签名不变 → 任何 `from tdoc_helper import call, ok` 的旧脚本自动恢复可用（已实测探测 OK）。
-
-**结论**：今后再看到"认购同步失败"告警，先 `git log --oneline -3` 与
-`python sync_subscription_0g5JQL.py --dry-run` 复核，很可能其实已同步。
-
-**本次补录（人工）**：3 条全部写入成功，10/10 字段完整，表 89→92 条
-- 悦海棠苑二期（青浦区）281套 62814元/㎡ 认购9/5-9/9 → `rcyP0a`
-- 天誉兰园（闵行区）132套 74714元/㎡ 认购9/5-9/9 → `rpuzXL`
-- 水岸和煦名邸（闵行区）96套 68498元/㎡ 认购9/5-9/9 → `rVPR7O`
-
-**踩坑记录**：本次 `git pull --rebase --autostash` 遇到 updateTime 字段冲突（我 08:33 重跑抓取
-改了 updateTime，与远端 07:15 版本撞车）。双方 recentSubscriptions **内容完全一致**（均 78 条，
-3 个新楼盘都在），取远端版本 + `git stash drop` 解决，未丢数据。
-👉 教训：**任务报告同步失败时，别急着重跑抓取**，先核实远端是否已推送，否则白造一次冲突。
+## 2026-08-31
+- CDP Proxy 已在运行（端口 3456，/health 404 但根路径 200），Chrome 远程调试端口 9222 正常。
+- `scrape_subscription_data.js` 执行成功。
+- 从官网提取 375 行 → 23 条在售记录，与本地 74 条对比，无新增楼盘。
+- 仅更新 `data/subscription_data.json` 日期至 2026-08-31。
+- GitHub 推送成功：本地 commit `1e9f7a9` "更新认购公示数据至今天日期"。
+- 推送过程：远端有新提交（`591b771` "更新2026-08-30数据"），通过 `git pull --rebase --autostash` 处理后成功推送。
+- 无需更新腾讯文档（无新楼盘），无需发送微信通知（脚本成功）。
