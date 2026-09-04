@@ -82,3 +82,25 @@ raw_data/
 # 测试用的真实数据（应该用mock数据）
 test_data/real/
 !data/subscription_data.json
+
+# ===== 临时产物：用完即弃，不留在工作区、不进版本库 =====
+# 根目录：截屏 / AI 海报等图片产物
+/*.png
+/*.jpg
+/*.jpeg
+
+# 根目录：带日期的一次性脚本副本（正式脚本已取代）
+/*_2026-*.py
+/*_2026-*.js
+/test_*.js
+/transform_for_dashboard_v2.js
+
+# data/：微信推送 / 告警 / 看门狗 / 抓取日志等中间文本
+data/.notify_*
+data/.alert_*
+data/.watchdog_*
+data/land_wechat_*.txt
+data/wechat_*.txt
+data/work_log_*.md
+data/notify_*.txt
+data/_scrape_*.log
