@@ -97,10 +97,25 @@ def gv(rec, field):
 
 
 def load_table():
-    r = call('smartsheet.list_records', {'file_id': FILE, 'sheet_id': SHEET, 'page_size': 200})
-    if not ok(r):
-        raise RuntimeError('list_records 失败: ' + json.dumps(r, ensure_ascii=False)[:400])
-    return r.get('records', [])
+    # ⚠️ 服务端单页上限 100 条（page_size=200 也会被截断），
+    #    响应带 has_more/next/total，必须循环翻页取全量，
+    #    否则第 101 条起的记录对去重匹配和回读校验不可见（2026-09-15 实测）。
+    recs = []
+    offset = 0
+    while True:
+        r = call('smartsheet.list_records',
+                 {'file_id': FILE, 'sheet_id': SHEET, 'page_size': 200, 'offset': offset})
+        if not ok(r):
+            raise RuntimeError('list_records 失败: ' + json.dumps(r, ensure_ascii=False)[:400])
+        batch = r.get('records', [])
+        recs.extend(batch)
+        if not r.get('has_more'):
+            break
+        nxt = r.get('next')
+        if nxt is None or int(nxt) <= offset:
+            break  # 防御：next 不前进则退出，避免死循环
+        offset = int(nxt)
+    return recs
 
 
 def build_field_values(item, data_date):
