@@ -398,7 +398,7 @@
         // 获取视图数据
         function getViewData() {
             if (currentView === 'daily') {
-                return allData.slice(0, 30).reverse().map(d => ({
+                return allData.slice().reverse().map(d => ({
                     label: d.date.slice(5),
                     newHouseCount: d.newHouse?.todaySignUnits ?? d.newHouse?.todaySaleCount ?? 0,
                     newHouseArea: d.newHouse?.todaySignArea ?? d.newHouse?.todaySaleArea ?? 0,
