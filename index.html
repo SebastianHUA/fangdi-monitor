@@ -398,7 +398,9 @@
         // 获取视图数据
         function getViewData() {
             if (currentView === 'daily') {
-                return allData.slice().reverse().map(d => ({
+                // 只显示当月数据（以最新一条记录所属月份为准）
+                const curMonth = allData[0].date.slice(0, 7);
+                return allData.filter(d => d.date.slice(0, 7) === curMonth).reverse().map(d => ({
                     label: d.date.slice(5),
                     newHouseCount: d.newHouse?.todaySignUnits ?? d.newHouse?.todaySaleCount ?? 0,
                     newHouseArea: d.newHouse?.todaySignArea ?? d.newHouse?.todaySaleArea ?? 0,
@@ -449,7 +451,9 @@
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
             
-            const recent = allData.slice(0, 30);
+            // 只显示当月数据（以最新一条记录所属月份为准）
+            const curMonth = allData[0].date.slice(0, 7);
+            const recent = allData.filter(d => d.date.slice(0, 7) === curMonth);
             recent.forEach(d => {
                 const tr = document.createElement('tr');
                 const nhUnits = d.newHouse?.todaySignUnits ?? d.newHouse?.todaySaleCount ?? 0;
