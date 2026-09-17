@@ -398,9 +398,10 @@
         // 获取视图数据
         function getViewData() {
             if (currentView === 'daily') {
-                // 只显示当月数据（以最新一条记录所属月份为准）
-                const curMonth = allData[0].date.slice(0, 7);
-                return allData.filter(d => d.date.slice(0, 7) === curMonth).reverse().map(d => ({
+                // 只显示近一个月（以最新一条记录的日期为基准，往前推 30 天）
+                const latestMs = new Date(allData[0].date + 'T00:00:00').getTime();
+                const cutoff = new Date(latestMs - 29 * 86400000).toISOString().slice(0, 10);
+                return allData.filter(d => d.date >= cutoff).reverse().map(d => ({
                     label: d.date.slice(5),
                     newHouseCount: d.newHouse?.todaySignUnits ?? d.newHouse?.todaySaleCount ?? 0,
                     newHouseArea: d.newHouse?.todaySignArea ?? d.newHouse?.todaySaleArea ?? 0,
@@ -451,9 +452,10 @@
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
             
-            // 只显示当月数据（以最新一条记录所属月份为准）
-            const curMonth = allData[0].date.slice(0, 7);
-            const recent = allData.filter(d => d.date.slice(0, 7) === curMonth);
+            // 只显示近一个月（以最新一条记录的日期为基准，往前推 30 天）
+            const latestMs = new Date(allData[0].date + 'T00:00:00').getTime();
+            const cutoff = new Date(latestMs - 29 * 86400000).toISOString().slice(0, 10);
+            const recent = allData.filter(d => d.date >= cutoff);
             recent.forEach(d => {
                 const tr = document.createElement('tr');
                 const nhUnits = d.newHouse?.todaySignUnits ?? d.newHouse?.todaySaleCount ?? 0;
