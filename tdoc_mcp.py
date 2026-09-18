@@ -25,19 +25,44 @@ except ImportError:  # pragma: no cover
 _SERVICE = "tencent-docs"
 
 
+_CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "data", ".tdoc_endpoint.json")
+
+
 def _endpoint():
-    """从 CODEBUDDY_MCP_CONFIG 读出 tencent-docs 的 url 与 headers。"""
+    """读出 tencent-docs 的 url 与 headers。
+
+    优先级：CODEBUDDY_MCP_CONFIG 环境变量 > 本地缓存 data/.tdoc_endpoint.json。
+    背景：自动化新起的会话有时未挂载 tencent-docs 连接器（NO_SERVICE），但
+    连接器代理实际由 WorkBuddy 主程序常驻监听（应用不重启则 url/token 有效），
+    因此在环境变量可用的会话里顺手写缓存，缺失的会话回退用缓存。
+    """
     cfg = os.environ.get("CODEBUDDY_MCP_CONFIG")
-    if not cfg:
-        raise RuntimeError("NO_CONFIG: CODEBUDDY_MCP_CONFIG 未设置")
+    srv = None
+    if cfg:
+        try:
+            srv = (json.loads(cfg).get("mcpServers") or {}).get(_SERVICE)
+        except ValueError:
+            srv = None
+    if srv:
+        try:
+            import datetime
+            os.makedirs(os.path.dirname(_CACHE_FILE), exist_ok=True)
+            with open(_CACHE_FILE, "w", encoding="utf-8") as f:
+                json.dump({"url": srv["url"], "headers": srv.get("headers", {}),
+                           "cached_at": datetime.datetime.now().isoformat(timespec="seconds")}, f)
+        except OSError:
+            pass
+        return srv["url"], srv.get("headers", {})
+    # 环境变量缺失或不含 tencent-docs → 回退本地缓存
     try:
-        data = json.loads(cfg)
-    except ValueError as e:
-        raise RuntimeError("BAD_CONFIG: %s" % e)
-    srv = (data.get("mcpServers") or {}).get(_SERVICE)
-    if not srv:
-        raise RuntimeError("NO_SERVICE: %s 不在 mcpServers 中" % _SERVICE)
-    return srv["url"], srv.get("headers", {})
+        with open(_CACHE_FILE, "r", encoding="utf-8") as f:
+            cache = json.load(f)
+        if cache.get("url"):
+            return cache["url"], cache.get("headers", {})
+    except (OSError, ValueError):
+        pass
+    raise RuntimeError("NO_SERVICE: %s 不在 mcpServers 中，且无本地缓存兜底" % _SERVICE)
 
 
 def _post(url, headers, payload):

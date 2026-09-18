@@ -104,3 +104,4 @@ data/wechat_*.txt
 data/work_log_*.md
 data/notify_*.txt
 data/_scrape_*.log
+data/.tdoc_endpoint.json
