@@ -29,13 +29,16 @@ _CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                            "data", ".tdoc_endpoint.json")
 
 
-def _endpoint():
-    """读出 tencent-docs 的 url 与 headers。
+_EP_STATE = {"url": None, "headers": None}
 
-    优先级：CODEBUDDY_MCP_CONFIG 环境变量 > 本地缓存 data/.tdoc_endpoint.json。
-    背景：自动化新起的会话有时未挂载 tencent-docs 连接器（NO_SERVICE），但
-    连接器代理实际由 WorkBuddy 主程序常驻监听（应用不重启则 url/token 有效），
-    因此在环境变量可用的会话里顺手写缓存，缺失的会话回退用缓存。
+
+def _candidates():
+    """候选端点：环境变量 > 本地缓存 data/.tdoc_endpoint.json。
+
+    2026-09-20 变更背景：宿主把 mcpServers 从「每个连接器一个条目」改成了统一的
+    connector-proxy + 内置 builtin_tools，导致会话里查不到 tencent-docs
+    （tools/call 一律返回 "unavailable in this session"）。此时必须能清楚地区分
+    「env 里没有」和「缓存端口死了」，否则会拿着失效端口反复 502、看不出根因。
     """
     cfg = os.environ.get("CODEBUDDY_MCP_CONFIG")
     srv = None
@@ -44,35 +47,66 @@ def _endpoint():
             srv = (json.loads(cfg).get("mcpServers") or {}).get(_SERVICE)
         except ValueError:
             srv = None
-    if srv:
-        try:
-            import datetime
-            os.makedirs(os.path.dirname(_CACHE_FILE), exist_ok=True)
-            with open(_CACHE_FILE, "w", encoding="utf-8") as f:
-                json.dump({"url": srv["url"], "headers": srv.get("headers", {}),
-                           "cached_at": datetime.datetime.now().isoformat(timespec="seconds")}, f)
-        except OSError:
-            pass
-        return srv["url"], srv.get("headers", {})
-    # 环境变量缺失或不含 tencent-docs → 回退本地缓存
+    if srv and srv.get("url"):
+        yield srv["url"], srv.get("headers", {}), "env"
     try:
         with open(_CACHE_FILE, "r", encoding="utf-8") as f:
             cache = json.load(f)
         if cache.get("url"):
-            return cache["url"], cache.get("headers", {})
+            yield cache["url"], cache.get("headers", {}), "cache"
     except (OSError, ValueError):
         pass
-    raise RuntimeError("NO_SERVICE: %s 不在 mcpServers 中，且无本地缓存兜底" % _SERVICE)
 
 
-def _post(url, headers, payload):
+def _alive(url, headers):
+    """探活：tools/list 能通即认为端点有效；任何异常一律 False（不外抛）。"""
+    try:
+        _post(url, headers, {"jsonrpc": "2.0", "id": 0,
+                             "method": "tools/list", "params": {}}, timeout=10)
+        return True
+    except Exception:
+        return False
+
+
+def _endpoint():
+    """选可用端点并进程内缓存；取用前先探活，避免死端口静默 502。
+
+    返回 (url, headers)。全部不可用时抛出带明确原因的 RuntimeError。
+    """
+    if _EP_STATE["url"]:
+        return _EP_STATE["url"], _EP_STATE["headers"]
+
+    tried = []
+    for url, headers, src in _candidates():
+        if _alive(url, headers):
+            _EP_STATE["url"], _EP_STATE["headers"] = url, headers
+            if src == "env":
+                try:
+                    import datetime
+                    os.makedirs(os.path.dirname(_CACHE_FILE), exist_ok=True)
+                    with open(_CACHE_FILE, "w", encoding="utf-8") as f:
+                        json.dump({"url": url, "headers": headers,
+                                   "cached_at": datetime.datetime.now().isoformat(timespec="seconds")}, f)
+                except OSError:
+                    pass
+            return url, headers
+        tried.append("%s(%s)" % (src, url))
+
+    raise RuntimeError(
+        "TDOC_UNREACHABLE: 腾讯文档端点均不可用（已试=%s）。常见原因："
+        "①本会话未挂载 tencent-docs 连接器（宿主改用 connector-proxy）；"
+        "②主程序重启后旧端口失效、缓存未刷新。修复：在任一会话成功调用一次腾讯文档，刷新 %s"
+        % (", ".join(tried) or "无候选", _CACHE_FILE))
+
+
+def _post(url, headers, payload, timeout=120):
     body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     req = _u.Request(url, data=body, method="POST")
     for k, v in headers.items():
         req.add_header(k, v)
     req.add_header("Content-Type", "application/json")
     req.add_header("Accept", "application/json, text/event-stream")
-    with _u.urlopen(req, timeout=120) as resp:
+    with _u.urlopen(req, timeout=timeout) as resp:
         return resp.read().decode("utf-8", "replace")
 
 
