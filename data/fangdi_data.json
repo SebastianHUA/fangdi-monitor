@@ -1,5 +1,14 @@
 [
   {
+    "date": "2026-09-20",
+    "newHouse": {
+      "todaySignUnits": 470,
+      "todaySignArea": 40182.52,
+      "availableUnits": 57262
+    },
+    "marketReview": ""
+  },
+  {
     "date": "2026-09-19",
     "newHouse": {
       "todaySignUnits": 364,

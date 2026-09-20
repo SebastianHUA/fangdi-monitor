@@ -110,12 +110,33 @@ async function fetchHomePageData() {
     await createTab('https://www.fangdi.com.cn/index.html');
     
     // 提取页面文本（用于获取"签约套数"）
-    const textResult = await evalJS('document.body.innerText');
-    let text = '';
-    if (typeof textResult === 'object' && textResult.value) {
-        text = textResult.value;
-    } else if (typeof textResult === 'string') {
-        text = textResult;
+    // 【2026-09-21 修复】官网"今日签约"区块为异步渲染，固定 8s 等待经常抓不到
+    // → 改为轮询等待（最多约 45s），仍拿不到则 reload 一次再轮询一轮
+    const SIGN_RE = /签约套数[：:]\s*(\d+)/;
+    const fetchText = async () => {
+        const res = await evalJS('document.body.innerText');
+        if (typeof res === 'object' && res.value) return String(res.value);
+        if (typeof res === 'string') return res;
+        return '';
+    };
+    let text = await fetchText();
+    for (let i = 0; i < 9 && !SIGN_RE.test(text); i++) {
+        console.log(`  ⏳ 第 ${i + 1} 次未取到"签约套数"，等待 5s 重试...`);
+        await wait(5000);
+        text = await fetchText();
+    }
+    if (!SIGN_RE.test(text)) {
+        console.log('  🔄 仍未取到，执行 reload 后重新等待...');
+        await evalJS('location.reload(); 1');
+        await wait(15000);
+        for (let i = 0; i < 5 && !SIGN_RE.test(text); i++) {
+            text = await fetchText();
+            if (SIGN_RE.test(text)) break;
+            await wait(5000);
+        }
+    }
+    if (!SIGN_RE.test(text)) {
+        console.log(`  ⚠️ 多次重试仍未取到"签约套数"（文本长度 ${text.length}）`);
     }
     
     // 提取HTML中的数据（用于获取"可售套数"和"挂牌套数"）
@@ -688,7 +709,17 @@ async function main() {
         // 保存数据（数组格式，保留历史数据）
         if (!TEST_MODE) {
             console.log("======== 保存数据 =========");
-            
+
+            // 【2026-09-21 新增】午夜归零保护：
+            // 官网"今日签约"在午夜重置，00:00-01:00 抓到 0 套几乎必然是次日归零值，
+            // 若写入会把当天数据污染成 0。此处直接拒绝写入并告警。
+            const shanghaiHour = new Date(Date.now() + 8 * 3600 * 1000).getUTCHours();
+            if (shanghaiHour === 0 && result.newHouse && Number(result.newHouse.todaySignUnits) === 0) {
+                console.log("🚨 午夜归零保护触发：上海时间 00 点段抓到 0 套，疑似官网重置后的次日数据，已拒绝写入。");
+                console.log("   处理建议：次日 07:00 用「楼市回顾」回补当天一手房数据。");
+                return null;
+            }
+
             // 生成数组格式的数据文件（保留历史数据）
             const dataFile = "data/fangdi_data.json";
             let allData = [];
