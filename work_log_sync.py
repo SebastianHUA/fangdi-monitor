@@ -54,7 +54,9 @@ def main():
         print('用法: python work_log_sync.py <YYYY-MM-DD> "条目1" "条目2" ...')
         sys.exit(1)
     date_str = sys.argv[1]
-    items = sys.argv[2:]
+    # 主人常直接口述带序号的条目（"1.下发排查"），这里先统一剥掉自带序号，
+    # 再重新编号，否则会出现 "1. 1.下发排查" 这种双编号。
+    items = [strip_no(c) for c in sys.argv[2:]]
     y, m, d = map(int, date_str.split('-'))
     ts = shanghai_ms(y, m, d)
     ts_str = str(ts)
