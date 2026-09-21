@@ -1,12 +1,21 @@
 # -*- coding: utf-8 -*-
-"""腾讯文档 MCP 直连封装（http://127.0.0.1:49451/.../mcp）。
+"""腾讯文档 MCP 直连封装。
 
-背景：历史用的 mcporter.cmd 在本机已不存在，且 tencentdocs.py 依赖宿主注入
-TDOC_OAUTH_ACCESS_TOKEN（Bash 环境里没有）。但宿主把 connector 的 url + Bearer
-token 放在了环境变量 CODEBUDDY_MCP_CONFIG 里，可直接 HTTP JSON-RPC 调用。
+端点候选顺序（2026-09-21 重写）：
+  ① 环境变量 TDOC_OAUTH_ACCESS_TOKEN / TDOC_ONEID_ACCESS_TOKEN（宿主直接注入）
+  ② **V2 Gateway 票据通道**（本次新增，根治方案）：
+     用 CODEBUDDY_MCP_CONFIG 里 connector-proxy 的 url + 整组 headers，
+     GET {gateway}/internal/tencent-docs/tokens 换取 personal / enterprise 票据，
+     再直连 https://docs.qq.com/openapi/mcp（224 个工具，含 30 个 smartsheet.*）。
+  ③ env 里的 tencent-docs 条目（宿主把连接器挂进本会话时才有）
+  ④ 本地缓存 data/.tdoc_endpoint.json（端口会随主程序重启变化，仅兜底）
+
+背景：2026-09 起宿主把 mcpServers 改成统一的 connector-proxy，env 里查不到
+tencent-docs 条目，旧版只能等宿主挂载，导致同步长期失败。② 绕开了这个依赖：
+只要连接器授权过，网关就能发票据，不要求连接器出现在当前会话。
 
 用法：
-    from tdoc_mcp import call, list_tools
+    from tdoc_mcp import call, list_tools, load_table
     r = call('smartsheet.list_records', {'file_id': 'xxx', 'sheet_id': 'yyy'})
     list_tools()   # 打印可用工具名
 
@@ -31,15 +40,97 @@ _CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 
 _EP_STATE = {"url": None, "headers": None}
 
+# 票据进程内缓存（网关是本地调用，很便宜，但仍避免 tools/list 反复取）
+_TOK_STATE = {"fetched": False, "oauth": "", "oneid": "", "api_base": "", "reason": ""}
+
+_DEFAULT_API_BASE = "https://docs.qq.com"
+
+
+def _no_proxy_opener():
+    return _u.build_opener(_u.ProxyHandler({}))
+
+
+def _gateway_token():
+    """从宿主 V2 MCP Gateway 换取腾讯文档票据。
+
+    成功返回 (oauth, oneid, api_base)；任一为空表示对应侧不可用，reason 记录原因。
+    🚨 请求必须整组透传 connector-proxy 的 headers：除 Authorization 外还有
+    X-WorkBuddy-MCP-Context（宿主签发的会话信封），只带 Authorization 会被 401。
+    """
+    if _TOK_STATE["fetched"]:
+        return (_TOK_STATE["oauth"], _TOK_STATE["oneid"], _TOK_STATE["api_base"])
+
+    _TOK_STATE["fetched"] = True
+    cfg = os.environ.get("CODEBUDDY_MCP_CONFIG")
+    if not cfg:
+        _TOK_STATE["reason"] = "no_mcp_config"
+        return "", "", ""
+    try:
+        servers = json.loads(cfg).get("mcpServers") or {}
+        # 宿主 V2 Gateway 条目名是 connector-proxy（workbuddy 是迁移期旧名，兜底）
+        server = servers.get("connector-proxy") or servers.get("workbuddy") or {}
+        gateway_url = server.get("url") or ""
+        gw_headers = {k: v for k, v in (server.get("headers") or {}).items()
+                      if isinstance(k, str) and isinstance(v, str) and v}
+    except ValueError:
+        _TOK_STATE["reason"] = "bad_mcp_config"
+        return "", "", ""
+
+    if not (gateway_url.endswith("/mcp") and
+            any(k.lower() == "authorization" for k in gw_headers)):
+        _TOK_STATE["reason"] = "no_gateway_entry"
+        return "", "", ""
+
+    try:
+        req = _u.Request(gateway_url + "/internal/tencent-docs/tokens",
+                         headers=gw_headers, method="GET")
+        with _no_proxy_opener().open(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except Exception as e:  # noqa: BLE001
+        _TOK_STATE["reason"] = "provider_unreachable(%s)" % type(e).__name__
+        return "", "", ""
+
+    personal = data.get("personal") or {}
+    enterprise = data.get("enterprise") or {}
+    oauth = str(personal["token"]) if personal.get("available") and personal.get("token") else ""
+    oneid = str(enterprise["token"]) if enterprise.get("available") and enterprise.get("token") else ""
+    api_base = data.get("apiBase") or ""
+    _TOK_STATE.update({"oauth": oauth, "oneid": oneid, "api_base": api_base,
+                       "reason": "" if (oauth or oneid) else
+                                 "personal=%s enterprise=%s" % (
+                                     personal.get("reason") or "unavailable",
+                                     enterprise.get("reason") or "unavailable")})
+    return oauth, oneid, api_base
+
 
 def _candidates():
-    """候选端点：环境变量 > 本地缓存 data/.tdoc_endpoint.json。
+    """候选端点，按优先级 yield (url, headers, src)。
 
-    2026-09-20 变更背景：宿主把 mcpServers 从「每个连接器一个条目」改成了统一的
-    connector-proxy + 内置 builtin_tools，导致会话里查不到 tencent-docs
-    （tools/call 一律返回 "unavailable in this session"）。此时必须能清楚地区分
-    「env 里没有」和「缓存端口死了」，否则会拿着失效端口反复 502、看不出根因。
+    2026-09-21 变更：新增 V2 Gateway 票据通道。env 里没有 tencent-docs 条目也能用，
+    只要连接器授权过即可。apiBase 由网关下发（专享版域名），本环境常不可达，
+    故同时给出 docs.qq.com 公网兜底，由 _alive 探活剔除不可达者。
     """
+    oauth, oneid, api_base = "", "", ""
+    # ① 宿主直接注入的环境变量优先
+    env_oauth = os.environ.get("TDOC_OAUTH_ACCESS_TOKEN", "")
+    env_oneid = os.environ.get("TDOC_ONEID_ACCESS_TOKEN", "")
+    if env_oauth or env_oneid:
+        oauth, oneid = env_oauth, env_oneid
+        api_base = os.environ.get("TDOC_API_BASE_URL", "")
+    else:
+        oauth, oneid, api_base = _gateway_token()
+
+    if oauth or oneid:
+        headers = {"User-Agent": "Workbuddy Plugin"}
+        if oauth:
+            headers["Authorization"] = "Bearer " + oauth
+        if oneid:
+            headers["X-Oneid-Access-Token"] = oneid
+        if api_base:
+            yield api_base.rstrip("/") + "/openapi/mcp", headers, "gateway(apibase)"
+        yield _DEFAULT_API_BASE + "/openapi/mcp", headers, "gateway"
+
+    # ③ env 里的 tencent-docs 条目（宿主把连接器挂进本会话时才有）
     cfg = os.environ.get("CODEBUDDY_MCP_CONFIG")
     srv = None
     if cfg:
@@ -49,6 +140,8 @@ def _candidates():
             srv = None
     if srv and srv.get("url"):
         yield srv["url"], srv.get("headers", {}), "env"
+
+    # ④ 本地缓存兜底（端口随主程序重启变化，多数情况已失效）
     try:
         with open(_CACHE_FILE, "r", encoding="utf-8") as f:
             cache = json.load(f)
@@ -80,23 +173,26 @@ def _endpoint():
     for url, headers, src in _candidates():
         if _alive(url, headers):
             _EP_STATE["url"], _EP_STATE["headers"] = url, headers
-            if src == "env":
+            # 落盘兜底：自动化会话里可能拿不到 CODEBUDDY_MCP_CONFIG，缓存端点可救命。
+            # 票据过期时 _alive 会失败并自动回退到后续候选，不会静默写坏数据。
+            if src.startswith("gateway") or src == "env":
                 try:
                     import datetime
                     os.makedirs(os.path.dirname(_CACHE_FILE), exist_ok=True)
                     with open(_CACHE_FILE, "w", encoding="utf-8") as f:
-                        json.dump({"url": url, "headers": headers,
+                        json.dump({"url": url, "headers": headers, "src": src,
                                    "cached_at": datetime.datetime.now().isoformat(timespec="seconds")}, f)
                 except OSError:
                     pass
             return url, headers
         tried.append("%s(%s)" % (src, url))
 
+    tok_reason = _TOK_STATE.get("reason") or "n/a"
     raise RuntimeError(
-        "TDOC_UNREACHABLE: 腾讯文档端点均不可用（已试=%s）。常见原因："
-        "①本会话未挂载 tencent-docs 连接器（宿主改用 connector-proxy）；"
-        "②主程序重启后旧端口失效、缓存未刷新。修复：在任一会话成功调用一次腾讯文档，刷新 %s"
-        % (", ".join(tried) or "无候选", _CACHE_FILE))
+        "TDOC_UNREACHABLE: 腾讯文档端点均不可用（已试=%s；票据通道=%s）。"
+        "排查：①网关票据通道应在连接器已授权时可用，若显示 not_connected/"
+        "connector_disabled，需在宿主里重新连接腾讯文档；②主程序重启后旧端口失效。"
+        % (", ".join(tried) or "无候选", tok_reason))
 
 
 def _post(url, headers, payload, timeout=120):
@@ -106,8 +202,13 @@ def _post(url, headers, payload, timeout=120):
         req.add_header(k, v)
     req.add_header("Content-Type", "application/json")
     req.add_header("Accept", "application/json, text/event-stream")
-    with _u.urlopen(req, timeout=timeout) as resp:
-        return resp.read().decode("utf-8", "replace")
+    # 本机系统代理常返回 502（尤其专享版域名），公网端点先直连、失败再退回系统代理
+    try:
+        with _no_proxy_opener().open(req, timeout=timeout) as resp:
+            return resp.read().decode("utf-8", "replace")
+    except Exception:
+        with _u.urlopen(req, timeout=timeout) as resp:
+            return resp.read().decode("utf-8", "replace")
 
 
 def _parse(raw):
