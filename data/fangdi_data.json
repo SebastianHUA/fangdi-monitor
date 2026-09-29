@@ -1,5 +1,19 @@
 [
   {
+    "date": "2026-09-29",
+    "newHouse": {
+      "todaySignUnits": 1141,
+      "todaySignArea": 157716,
+      "availableUnits": 57326
+    },
+    "marketReview": "1、今日新开房源共计8个开盘单元， 推出1353套，面积70050.05平方米。其中位于郊环以外的0个，外郊环间的2个，中外环间的3个，内中环间的3个，内环以内的0个。\n2、今日共预/出售各类商品房1200套，面积15.86万平方米。",
+    "secondHand": {
+      "yesterdaySaleCount": 981,
+      "yesterdaySaleArea": 77723,
+      "listingCount": 295124
+    }
+  },
+  {
     "date": "2026-09-28",
     "newHouse": {
       "todaySignUnits": 663,
