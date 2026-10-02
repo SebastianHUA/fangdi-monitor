@@ -105,3 +105,11 @@ data/work_log_*.md
 data/notify_*.txt
 data/_scrape_*.log
 data/.tdoc_endpoint.json
+
+# ===== 2026-10-02 安全加固：本地自动化资产永不入库 =====
+# 本仓库 remote 指向公开 GitHub 仓库，以下内容含个人信息 / 内部规则 / 凭据通道，
+# 一旦入库即公开泄露（2026-10-02 已发生并从历史中彻底清除，禁止再次提交）。
+.workbuddy/
+task_rules/
+/*.py
+/.automation*/
