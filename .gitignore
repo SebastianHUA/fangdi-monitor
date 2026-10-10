@@ -113,3 +113,8 @@ data/.tdoc_endpoint.json
 task_rules/
 /*.py
 /.automation*/
+
+# ===== 2026-10-10 追加：微信 / 对话收到的附件目录 =====
+# 默认落点为 Claw/attachments/，常含银行内部材料（真实案例、支行名、客户信息），
+# 一律不得入库。处理完的附件请从回收站或另行保存到桌面等非仓库目录。
+attachments/
