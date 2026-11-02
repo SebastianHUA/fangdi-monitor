@@ -118,3 +118,22 @@ task_rules/
 # 默认落点为 Claw/attachments/，常含银行内部材料（真实案例、支行名、客户信息），
 # 一律不得入库。处理完的附件请从回收站或另行保存到桌面等非仓库目录。
 attachments/
+
+# ===== 2026-11-02 安全加固②：data/ 改为「默认拒绝」白名单 =====
+# 原方案用枚举式黑名单（data/*.png、data/_*），天然滞后：每出现一种新产物就得改一次，
+# 漏改的代价是直接公开到 GitHub（本仓库 remote 为 public + Pages 在线）。
+# 改为：data/ 下一切新文件默认忽略，只放行自动化每天必须提交的 3 类产物。
+# 已跟踪的旧文件不受影响（.gitignore 对已跟踪文件无效）。
+data/*
+!data/fangdi_data.json
+!data/subscription_data.json
+!data/fangdi_daily_report_*.md
+
+# 含内部业务内容的 HTML 报告（如「客户经理赋能体系总览」）
+outputs/
+# 每日一技卡片模板与样例图
+tips/
+# 本地打包的技能包
+/*.zip
+# 一次性日历/清单类 HTML
+/secondhand_calendar_*.html
