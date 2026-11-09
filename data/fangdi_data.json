@@ -1,5 +1,75 @@
 [
   {
+    "date": "2026-11-09",
+    "newHouse": {
+      "todaySignUnits": 211,
+      "todaySignArea": 18322,
+      "availableUnits": 56748
+    },
+    "marketReview": "1、今日新开房源共计0个开盘单元， 推出0套，面积0.00平方米。其中位于郊环以外的0个，外郊环间的0个，中外环间的0个，内中环间的0个，内环以内的0个。\n2、今日共预/出售各类商品房210套，面积1.80万平方米。",
+    "secondHand": {
+      "yesterdaySaleCount": 667,
+      "yesterdaySaleArea": 53659,
+      "listingCount": 281289
+    }
+  },
+  {
+    "date": "2026-11-08",
+    "newHouse": {
+      "todaySignUnits": 182,
+      "todaySignArea": 17369,
+      "availableUnits": 56897
+    },
+    "marketReview": "1、今日新开房源共计2个开盘单元， 推出158套，面积30306.57平方米。其中位于郊环以外的0个，外郊环间的1个，中外环间的0个，内中环间的0个，内环以内的1个。\n2、今日共预/出售各类商品房182套，面积1.74万平方米。",
+    "secondHand": {
+      "yesterdaySaleCount": 1117,
+      "yesterdaySaleArea": 89848,
+      "listingCount": 281246
+    }
+  },
+  {
+    "date": "2026-11-07",
+    "newHouse": {
+      "todaySignUnits": 208,
+      "todaySignArea": 17703,
+      "availableUnits": 56905
+    },
+    "marketReview": "1、今日新开房源共计1个开盘单元， 推出0套，面积0.00平方米。其中位于郊环以外的0个，外郊环间的1个，中外环间的0个，内中环间的0个，内环以内的0个。\n2、今日共预/出售各类商品房208套，面积1.77万平方米。",
+    "secondHand": {
+      "yesterdaySaleCount": 1347,
+      "yesterdaySaleArea": 106219,
+      "listingCount": 281682
+    }
+  },
+  {
+    "date": "2026-11-06",
+    "newHouse": {
+      "todaySignUnits": 358,
+      "todaySignArea": 41128,
+      "availableUnits": 57023
+    },
+    "marketReview": "1、今日新开房源共计4个开盘单元， 推出1207套，面积47345.84平方米。其中位于郊环以外的0个，外郊环间的3个，中外环间的0个，内中环间的0个，内环以内的1个。\n2、今日共预/出售各类商品房358套，面积4.11万平方米。",
+    "secondHand": {
+      "yesterdaySaleCount": 771,
+      "yesterdaySaleArea": 61490,
+      "listingCount": 282071
+    }
+  },
+  {
+    "date": "2026-11-05",
+    "newHouse": {
+      "todaySignUnits": 340,
+      "todaySignArea": 23003,
+      "availableUnits": 57318
+    },
+    "marketReview": "1、今日新开房源共计2个开盘单元， 推出131套，面积13822.72平方米。其中位于郊环以外的0个，外郊环间的0个，中外环间的2个，内中环间的0个，内环以内的0个。\n2、今日共预/出售各类商品房339套，面积2.24万平方米。",
+    "secondHand": {
+      "yesterdaySaleCount": 687,
+      "yesterdaySaleArea": 53858,
+      "listingCount": 281675
+    }
+  },
+  {
     "date": "2026-11-04",
     "newHouse": {
       "todaySignUnits": 493,
