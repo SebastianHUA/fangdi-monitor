@@ -372,22 +372,6 @@ async function fetchNewHouseData() {
 async function fetchSecondHandData() {
     console.log('\n[2/2] 抓取二手房成交数据...');
     
-    await createTab('https://www.fangdi.com.cn/old_house/old_house.html');
-    
-    const textResult = await evalJS('document.body.innerText');
-    
-    // 确保text是字符串
-    let text = '';
-    if (typeof textResult === 'object' && textResult.value) {
-        text = textResult.value;
-    } else if (typeof textResult === 'string') {
-        text = textResult;
-    } else {
-        console.log(`  ⚠️ eval返回格式异常:`, textResult);
-        await closeTab();
-        return result;
-    }
-    
     const result = {
         date: new Date().toISOString().split('T')[0],
         yesterdaySaleCount: null,
@@ -395,6 +379,38 @@ async function fetchSecondHandData() {
         cumSaleCount: null,
         cumSaleArea: null
     };
+
+    await createTab('https://www.fangdi.com.cn/old_house/old_house.html');
+
+    // 【2026-11-26 修复】「昨日成交量」区域为异步渲染，固定 8s 等待经常只拿到「- 套」
+    // 实录：11-25 数据在 07:10 / 07:25 / 13:09 三次抓空，13:10 多等 1 秒才拿到 755 套。
+    // → 改为轮询等待（最多约 50s），仍取不到则 reload 后再轮询一轮。
+    const SH_RE = /昨日二手房成交套数[\s\S]{0,50}?(\d+)\s*套|昨日成交[\s\S]{0,100}?(\d+)\s*套/;
+    const readText = async () => {
+        const res = await evalJS('document.body.innerText');
+        if (res && typeof res === 'object' && res.value !== undefined) return String(res.value);
+        if (typeof res === 'string') return res;
+        return '';
+    };
+    let text = await readText();
+    for (let i = 0; i < 10 && !SH_RE.test(text); i++) {
+        console.log(`  ⏳ 第 ${i + 1} 次未取到"昨日二手房成交套数"，等待 5s 重试...`);
+        await wait(5000);
+        text = await readText();
+    }
+    if (!SH_RE.test(text)) {
+        console.log('  🔄 仍未取到，执行 reload 后重新等待...');
+        await evalJS('location.reload(); 1');
+        await wait(12000);
+        for (let i = 0; i < 6 && !SH_RE.test(text); i++) {
+            text = await readText();
+            if (SH_RE.test(text)) break;
+            await wait(5000);
+        }
+    }
+    if (!SH_RE.test(text)) {
+        console.log(`  ⚠️ 多轮等待仍未取到"昨日二手房成交套数"（文本长度 ${text.length}）`);
+    }
     
     // 提取昨日成交套数 - 多种匹配模式
     const yesterdayPatterns = [
@@ -476,7 +492,14 @@ async function fetchSecondHandData() {
     console.log(`  ✅ 昨日成交面积: ${result.yesterdaySaleArea || '未提取'} ㎡`);
     
     await closeTab();
-    
+
+    // 【2026-11-26 新增】抓不到真实成交套数时返回 null，防止上层把 null 写成 0 覆盖当日记录
+    // （11-25 就是这样被写成 0/0，导致日报发不出去）
+    if (!result.yesterdaySaleCount) {
+        console.log('  ❌ 昨日成交套数为空（源站未渲染/未更新），本次不写入二手数据');
+        return null;
+    }
+
     return result;
 }
 
@@ -656,12 +679,14 @@ async function main() {
             result.secondHand = await fetchSecondHandData();
             
             // 合并首页数据
-            if (result.homePage) {
+            if (result.secondHand && result.homePage) {
                 result.secondHand.listingCount = result.homePage.secondHandListingCount;
                 result.secondHand.listingArea = result.homePage.secondHandListingArea;
             }
             
-            console.log(`\n  ✅ 二手房数据抓取完成`);
+            console.log(result.secondHand
+                ? `\n  ✅ 二手房数据抓取完成`
+                : `\n  ❌ 二手房数据未取到（源站字段为空），本次不写入 secondHand`);
         }
         
         // 抓取楼市回顾（所有模式都运行，但先检查首页是否已有）
